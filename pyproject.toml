@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "pywebasto"
+version = "0.1.0"
+description = "API library for Webasto ThermoConnect devices"
+authors = ["Malene Trab <malene@trab.dk>"]
+license = "MIT"
+readme = "README.md"
+classifiers = [
+    "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+requests = "^2.28.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
