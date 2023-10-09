@@ -8,6 +8,10 @@ readme = "README.md"
 classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
+documentation = "https://github.com/mtrab/pywebasto"
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/mtrab/pywebasto/issues"
 
 [tool.poetry.dependencies]
 python = "^3.10"
