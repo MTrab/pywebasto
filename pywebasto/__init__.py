@@ -9,6 +9,10 @@ import requests
 
 from .consts import (
     API_URL,
+    CMD_AUX1_OFF,
+    CMD_AUX1_ON,
+    CMD_AUX2_OFF,
+    CMD_AUX2_ON,
     CMD_HEATER_OFF,
     CMD_HEATER_ON,
     CMD_VENTILATION_OFF,
@@ -32,14 +36,22 @@ class WebastoConnect:
         self._last_data = {}
         self._dev_data = {}
         self._settings = {}
-        self._mainOutput = {}
-        self._aux = {}
+        self._output_main = {}
+        self._output_aux1 = {}
+        self._output_aux2 = {}
 
         self._timeout_vent: int = 3600
         self._timeout_heat: int = 3600
+        self._timeout_aux1: int = 3600
+        self._timeout_aux2: int = 3600
+
+        self._icon_vent: str
+        self._icon_heat: str
+        self._icon_aux1: str
+        self._icon_aux2: str
 
         self._ventilation: bool = False
-        self._isCelcius: bool = False
+        self._iscelcius: bool = False
 
     def connect(self) -> None:
         """Connect to the API."""
@@ -117,19 +129,25 @@ class WebastoConnect:
         self._dev_data = self._call(Request.GET_DATA_NOPOLL)
 
         if self._last_data["temperature"][-1] == "C":
-            self._isCelcius = True
+            self._iscelcius = True
 
         for output in self._last_data["outputs"]:
             if output["line"] == "OUTH" or output["line"] == "OUTV":
-                self._mainOutput = output
+                self._output_main = output
                 if output["line"] == "OUTH":
                     self._ventilation = False
+                    self._icon_heat = output["icon"]
                 else:
                     self._ventilation = True
-            elif output["line"] == "OUTA":
-                self._aux = output
+                    self._icon_vent = output["icon"]
+            elif output["line"] == "OUT1":
+                self._output_aux1 = output
+                self._icon_aux1 = output["icon"]
+            elif output["line"] == "OUT2":
+                self._output_aux2 = output
+                self._icon_aux2 = output["icon"]
 
-    def set_output(self, state: bool) -> None:
+    def set_output_main(self, state: bool) -> None:
         """Turn on or off the heater or ventilation."""
         if state:
             if self._ventilation:
@@ -141,6 +159,22 @@ class WebastoConnect:
                 self._call(Request.COMMAND, CMD_VENTILATION_OFF)
             else:
                 self._call(Request.COMMAND, CMD_HEATER_OFF)
+        self.update()
+
+    def set_output_aux1(self, state: bool) -> None:
+        """Turn on or off the aux1 output."""
+        if state:
+            self._call(Request.COMMAND, CMD_AUX1_ON)
+        else:
+            self._call(Request.COMMAND, CMD_AUX1_OFF)
+        self.update()
+
+    def set_output_aux2(self, state: bool) -> None:
+        """Turn on or off the aux2 output."""
+        if state:
+            self._call(Request.COMMAND, CMD_AUX2_ON)
+        else:
+            self._call(Request.COMMAND, CMD_AUX2_OFF)
         self.update()
 
     def ventilation_mode(self, state: bool) -> None:
@@ -181,13 +215,12 @@ class WebastoConnect:
         self._call(Request.POST_SETTING, json.dumps(ventmode))
         self.update()
 
-    def set_timeout(
+    def set_main_timeout(
         self,
         heater: int | None = None,
         ventilation: int | None = None,
-        aux: int | None = None,
     ) -> None:
-        """Sets timeout of an output port in seconds."""
+        """Sets timeout of main output port in seconds."""
         if not isinstance(heater, type(None)):
             self._timeout_heat = heater
 
@@ -195,6 +228,46 @@ class WebastoConnect:
             self._timeout_vent = ventilation
 
         self.ventilation_mode(self._ventilation)
+
+    def set_aux_timeout(
+        self,
+        timeout: int | None = None,
+        aux: Outputs = Outputs.AUX1,
+    ) -> None:
+        """Sets timeout of an AUX port in seconds."""
+
+        if aux == Outputs.AUX1:
+            self._timeout_aux1 = timeout
+        elif aux == Outputs.AUX2:
+            self._timeout_aux2 = timeout
+
+        heat_sec = timeout % (24 * 3600)
+        heat_h = heat_sec // 3600
+        heat_sec = heat_sec % 3600
+        heat_m = heat_sec // 60
+
+        data = {
+            "device_settings": {
+                f"{aux.value}_function": "enabled",
+                f"{aux.value}_timeout_on": True,
+                f"{aux.value}_timeout_h": heat_h,
+                f"{aux.value}_timeout_min": heat_m,
+            },
+            "service_settings": {
+                f"{aux.value}_on": True,
+                f"{aux.value}_name": self.output_aux1_name
+                if aux == Outputs.AUX1
+                else self.output_aux2_name,
+                f"{aux.value}_icon": self._icon_aux1
+                if aux == Outputs.AUX1
+                else self._icon_aux1,
+            },
+            "location_events": None,
+            "air_heater": {},
+        }
+
+        self._call(Request.POST_SETTING, json.dumps(data))
+        self.update()
 
     def set_low_voltage_cutoff(self, value: float) -> None:
         """Set the low voltage cutoff value."""
@@ -240,22 +313,38 @@ class WebastoConnect:
         )
 
     @property
-    def output(self) -> bool:
+    def output_main(self) -> bool:
         """Get the main output state."""
-        if self._mainOutput["state"] == "OFF":
-            return False
+        if "state" in self._output_main:
+            return False if self._output_main["state"] == "OFF" else True
         else:
-            return True
+            return False
 
     @property
-    def isVentilation(self) -> bool:
+    def output_aux1(self) -> bool:
+        """Get the aux output state."""
+        if "state" in self._output_aux1:
+            return False if self._output_aux1["state"] == "OFF" else True
+        else:
+            return False
+
+    @property
+    def output_aux2(self) -> bool:
+        """Get the aux output state."""
+        if "state" in self._output_aux2:
+            return False if self._output_aux2["state"] == "OFF" else True
+        else:
+            return False
+
+    @property
+    def is_ventilation(self) -> bool:
         """Get the mode of the output channel."""
         return self._ventilation
 
     @property
     def temperature_unit(self) -> bool:
         """Get the temperature unit."""
-        return "°C" if self._isCelcius else "°F"
+        return "°C" if self._iscelcius else "°F"
 
     @property
     def hardware_version(self) -> str:
@@ -298,9 +387,28 @@ class WebastoConnect:
         return self._dev_data["alias"]
 
     @property
-    def output_name(self) -> str:
+    def output_main_name(self) -> str:
         """Get the main output name."""
-        return self._mainOutput["name"]
+        if "name" in self._output_main:
+            return self._output_main["name"] or "Primary"
+        else:
+            return False
+
+    @property
+    def output_aux1_name(self) -> str:
+        """Get the aux1 output name."""
+        if "name" in self._output_aux1:
+            return self._output_aux1["name"] or "Output 1"
+        else:
+            return False
+
+    @property
+    def output_aux2_name(self) -> str:
+        """Get the aux2 output name."""
+        if "name" in self._output_aux2:
+            return self._output_aux2["name"] or "Output 2"
+        else:
+            return False
 
     @property
     def subscription_expiration(self) -> datetime:
@@ -320,7 +428,7 @@ class WebastoConnect:
 
     def __get_timeouts(self) -> None:
         for g in self._settings["settings_tab"]:
-            if g["group"] != "webasto":
+            if g["group"] not in ["webasto", "outputs"]:
                 continue
 
             for o in g["options"]:
@@ -328,3 +436,7 @@ class WebastoConnect:
                     self._timeout_heat = o["timeout"]
                 elif o["key"] == "OUTV":
                     self._timeout_vent = o["timeout"]
+                elif o["key"] == "OUT1":
+                    self._timeout_aux1 = o["timeout"]
+                elif o["key"] == "OUT2":
+                    self._timeout_aux2 = o["timeout"]

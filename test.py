@@ -41,15 +41,40 @@ print(f"Subscription expiration: {webasto.subscription_expiration}")
 # webasto.ventilation_mode(False)
 
 # Is primary output on?
-print(f"{webasto.output_name} on: {webasto.output}")
+if webasto.output_main_name is not False:
+    print(f"{webasto.output_main_name} on: {webasto.output_main}")
 
-# Toggle heater output
-# if webasto.heater:
-#     webasto.set_heater(False)
+# Is aux1 output on?
+if webasto.output_aux1_name is not False:
+    print(f"{webasto.output_aux1_name} on: {webasto.output_aux1}")
+
+# Is aux1 output on?
+if webasto.output_aux2_name is not False:
+    print(f"{webasto.output_aux2_name} on: {webasto.output_aux2}")
+
+# Toggle main output
+# if webasto.output_main:
+#     webasto.set_output_main(False)
 # else:
-#     webasto.set_heater(True)
+#     webasto.set_output_main(True)
 
-# webasto.ventilation_mode(False)
+# Toggle aux1 output
+# if webasto.output_aux1:
+#     webasto.set_output_aux1(False)
+# else:
+#     webasto.set_output_aux1(True)
+
+# Toggle aux1 output
+# if webasto.output_aux2:
+#     webasto.set_output_aux2(False)
+# else:
+#     webasto.set_output_aux2(True)
+
+# Set timeout for aux1
+# webasto.set_aux_timeout(2400)
+
+# Set timeout for aux2
+# webasto.set_aux_timeout(2400, Outputs.AUX2)
 
 # Update data
 # webasto.update()
