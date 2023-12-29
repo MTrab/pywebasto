@@ -18,4 +18,5 @@ class Outputs(Enum):
 
     HEATER = "OUTH"
     VENTILATION = "OUTV"
-    AUX = "OUTA"
+    AUX1 = "OUT1"
+    AUX2 = "OUT2"
