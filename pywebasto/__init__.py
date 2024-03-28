@@ -1,11 +1,12 @@
 """Module for interfacing with Webasto Connect."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import threading
 from typing import Any
 
 import requests
+import pyproj
 
 from .consts import (
     API_URL,
@@ -52,6 +53,17 @@ class WebastoConnect:
 
         self._ventilation: bool = False
         self._iscelcius: bool = False
+
+        self._cur_lat: float = None
+        self._cur_lon: float = None
+        self._cur_time: datetime = None
+
+        self._prev_lat: float = None
+        self._prev_lon: float = None
+        self._prev_time: datetime = None
+
+        self._heading: int = 0
+        self._speed: float = 0
 
     def connect(self) -> None:
         """Connect to the API."""
@@ -127,6 +139,35 @@ class WebastoConnect:
         self.__get_timeouts()
         self._last_data = self._call(Request.GET_DATA)
         self._dev_data = self._call(Request.GET_DATA_NOPOLL)
+
+        if self._last_data["location"]["state"] == "ON":
+            self._prev_time = self._cur_time
+            self._prev_lat = self._cur_lat
+            self._prev_lon = self._cur_lon
+
+            self._cur_time = datetime.fromtimestamp(
+                self._last_data["location"]["timestamp"]
+            )
+            self._cur_lat = self._last_data["location"]["lat"]
+            self._cur_lon = self._last_data["location"]["lon"]
+
+            if (
+                not isinstance(self._prev_time, type(None))
+                and not isinstance(self._prev_lon, type(None))
+                and not isinstance(self._prev_lat, type(None))
+            ):
+                geodesic = pyproj.Geod(ellps="WGS84")
+                fwd_bearing, _, distance = geodesic.inv(
+                    self._prev_lat, self._prev_lon, self._cur_lat, self._cur_lon
+                )
+
+                if fwd_bearing[0] == "-":
+                    self._heading = 360 + fwd_bearing
+                else:
+                    self._heading = fwd_bearing
+
+                time_diff = (self._cur_time - self._prev_time).total_seconds / 3600
+                self._speed = distance / time_diff
 
         if self._last_data["temperature"][-1] == "C":
             self._iscelcius = True
@@ -255,12 +296,14 @@ class WebastoConnect:
             },
             "service_settings": {
                 f"{aux.value}_on": True,
-                f"{aux.value}_name": self.output_aux1_name
-                if aux == Outputs.AUX1
-                else self.output_aux2_name,
-                f"{aux.value}_icon": self._icon_aux1
-                if aux == Outputs.AUX1
-                else self._icon_aux1,
+                f"{aux.value}_name": (
+                    self.output_aux1_name
+                    if aux == Outputs.AUX1
+                    else self.output_aux2_name
+                ),
+                f"{aux.value}_icon": (
+                    self._icon_aux1 if aux == Outputs.AUX1 else self._icon_aux1
+                ),
             },
             "location_events": None,
             "air_heater": {},
@@ -311,6 +354,16 @@ class WebastoConnect:
             if self._last_data["location"]["state"] == "ON"
             else None
         )
+
+    @property
+    def heading(self) -> int:
+        """Returns the current heading in degrees."""
+        return self._heading if self._last_data["location"]["state"] == "ON" else None
+
+    @property
+    def speed(self) -> int:
+        """Returns the current speed in km/h."""
+        return self._speed if self._last_data["location"]["state"] == "ON" else None
 
     @property
     def output_main(self) -> bool:
