@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pywebasto"
-version = "1.0.2"
+version = "1.0.3"
 description = "API library for Webasto ThermoConnect devices"
 authors = ["Malene Trab <malene@trab.dk>"]
 license = "MIT"
