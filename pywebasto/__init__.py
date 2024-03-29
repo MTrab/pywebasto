@@ -140,7 +140,10 @@ class WebastoConnect:
         self._last_data = self._call(Request.GET_DATA)
         self._dev_data = self._call(Request.GET_DATA_NOPOLL)
 
-        if self._last_data["location"]["state"] == "ON":
+        if (
+            self._last_data["location"]["state"] == "ON"
+            and self._last_data["location"]["timestamp"] != self._cur_time
+        ):
             self._prev_time = self._cur_time
             self._prev_lat = self._cur_lat
             self._prev_lon = self._cur_lon
@@ -155,19 +158,24 @@ class WebastoConnect:
                 not isinstance(self._prev_time, type(None))
                 and not isinstance(self._prev_lon, type(None))
                 and not isinstance(self._prev_lat, type(None))
+                and self._prev_time != self._cur_time
             ):
                 geodesic = pyproj.Geod(ellps="WGS84")
                 fwd_bearing, _, distance = geodesic.inv(
                     self._prev_lat, self._prev_lon, self._cur_lat, self._cur_lon
                 )
 
-                if fwd_bearing < "0":
+                if fwd_bearing < 0:
                     self._heading = 360 + fwd_bearing
                 else:
                     self._heading = fwd_bearing
 
-                time_diff = (self._cur_time - self._prev_time).total_seconds / 3600
-                self._speed = distance / time_diff
+                if distance > 0:
+                    time_diff = (
+                        self._cur_time - self._prev_time
+                    ).total_seconds() / 3600
+                    if time_diff > 0:
+                        self._speed = distance / time_diff
 
         if self._last_data["temperature"][-1] == "C":
             self._iscelcius = True

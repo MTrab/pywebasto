@@ -7,6 +7,7 @@ from pywebasto.enums import Outputs
 
 webasto = WebastoConnect(environ["EMAIL"], environ["PASSWORD"])
 webasto.connect()
+webasto.update()
 
 # Get temperature
 print(f"Temperature: {webasto.temperature}")
