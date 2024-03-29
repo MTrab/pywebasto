@@ -161,7 +161,7 @@ class WebastoConnect:
                     self._prev_lat, self._prev_lon, self._cur_lat, self._cur_lon
                 )
 
-                if fwd_bearing < "0":
+                if fwd_bearing < 0:
                     self._heading = 360 + fwd_bearing
                 else:
                     self._heading = fwd_bearing
