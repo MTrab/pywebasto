@@ -175,7 +175,11 @@ class WebastoConnect:
                         self._cur_time - self._prev_time
                     ).total_seconds() / 3600
                     if time_diff > 0:
-                        self._speed = distance / time_diff
+                        self._speed = (distance / 1000) / time_diff
+                    else:
+                        self._speed = 0
+                else:
+                    self._speed = 0
 
         if self._last_data["temperature"][-1] == "C":
             self._iscelcius = True
