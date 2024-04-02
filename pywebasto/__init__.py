@@ -180,6 +180,8 @@ class WebastoConnect:
                         self._speed = 0
                 else:
                     self._speed = 0
+            else:
+                self._speed = 0
 
         if self._last_data["temperature"][-1] == "C":
             self._iscelcius = True
