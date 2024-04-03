@@ -140,6 +140,8 @@ class WebastoConnect:
         self._last_data = self._call(Request.GET_DATA)
         self._dev_data = self._call(Request.GET_DATA_NOPOLL)
 
+        self._speed = 0
+
         if (
             self._last_data["location"]["state"] == "ON"
             and self._last_data["location"]["timestamp"] != self._cur_time
@@ -176,12 +178,6 @@ class WebastoConnect:
                     ).total_seconds() / 3600
                     if time_diff > 0:
                         self._speed = (distance / 1000) / time_diff
-                    else:
-                        self._speed = 0
-                else:
-                    self._speed = 0
-            else:
-                self._speed = 0
 
         if self._last_data["temperature"][-1] == "C":
             self._iscelcius = True
