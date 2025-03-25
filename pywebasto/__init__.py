@@ -1,6 +1,6 @@
 """Module for interfacing with Webasto Connect."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 import json
 import threading
 from typing import Any
@@ -361,16 +361,6 @@ class WebastoConnect:
             if self._last_data["location"]["state"] == "ON"
             else None
         )
-
-    @property
-    def heading(self) -> int:
-        """Returns the current heading in degrees."""
-        return self._heading if self._last_data["location"]["state"] == "ON" else None
-
-    @property
-    def speed(self) -> int:
-        """Returns the current speed in km/h."""
-        return self._speed if self._last_data["location"]["state"] == "ON" else None
 
     @property
     def output_main(self) -> bool:
