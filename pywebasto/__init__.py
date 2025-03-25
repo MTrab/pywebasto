@@ -76,12 +76,9 @@ class WebastoConnect:
 
     def assemble_headers(self) -> dict:
         """Generate headers."""
-        _headers: dict = {"origin": "https://my.webastoconnect.com"}
+        _headers: dict = {"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0"}
 
         if isinstance(self._hssess, type(None)):
-            # _headers.update(
-            #     {"Cookie": "__stripe_mid=70011fb4-8351-41c7-baad-047402d8cafed894b1;"}
-            # )
             pass
         else:
             _headers.update({"Cookie": f"hssess={self._hssess};"})
@@ -103,7 +100,7 @@ class WebastoConnect:
             data=payload,
             timeout=60,
         )
-        # self._cookies = response.cookies
+
         if isinstance(self._hssess, type(None)):
             self._hssess = response.cookies["hssess"]
 
