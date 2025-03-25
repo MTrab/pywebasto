@@ -1,6 +1,6 @@
 """Module for interfacing with Webasto Connect."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 import json
 import threading
 from typing import Any
@@ -79,9 +79,6 @@ class WebastoConnect:
         _headers: dict = {"origin": "https://my.webastoconnect.com"}
 
         if isinstance(self._hssess, type(None)):
-            # _headers.update(
-            #     {"Cookie": "__stripe_mid=70011fb4-8351-41c7-baad-047402d8cafed894b1;"}
-            # )
             pass
         else:
             _headers.update({"Cookie": f"hssess={self._hssess};"})
