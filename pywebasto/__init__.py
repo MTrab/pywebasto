@@ -366,16 +366,6 @@ class WebastoConnect:
         )
 
     @property
-    def heading(self) -> int:
-        """Returns the current heading in degrees."""
-        return self._heading if self._last_data["location"]["state"] == "ON" else None
-
-    @property
-    def speed(self) -> int:
-        """Returns the current speed in km/h."""
-        return self._speed if self._last_data["location"]["state"] == "ON" else None
-
-    @property
     def output_main(self) -> bool:
         """Get the main output state."""
         if "state" in self._output_main:
