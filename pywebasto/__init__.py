@@ -32,7 +32,8 @@ class WebastoConnect:
 
         self._usn: str = username
         self._pwd: str = password
-        self._hssess: str = None
+        self._hssess: str | None = None
+        self._hssess_webclient: str | None = None
         self._authorized: bool = False
         self._last_data = {}
         self._dev_data = {}
@@ -76,12 +77,21 @@ class WebastoConnect:
 
     def assemble_headers(self) -> dict:
         """Generate headers."""
-        _headers: dict = {"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0"}
+        _headers: dict = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+        }
 
-        if isinstance(self._hssess, type(None)):
+        if isinstance(self._hssess, type(None)) and isinstance(
+            self._hssess_webclient, type(None)
+        ):
             pass
         else:
-            _headers.update({"Cookie": f"hssess={self._hssess};"})
+            if isinstance(self._hssess_webclient, type(None)):
+                _headers.update({"Cookie": f"hssess={self._hssess};"})
+            else:
+                _headers.update(
+                    {"Cookie": f"hssess-webclient={self._hssess_webclient};"}
+                )
 
         return _headers
 
@@ -101,22 +111,27 @@ class WebastoConnect:
             timeout=60,
         )
 
-        if isinstance(self._hssess, type(None)):
-            self._hssess = response.cookies["hssess"]
+        if isinstance(self._hssess, type(None)) and isinstance(
+            self._hssess_webclient, type(None)
+        ):
+            # if "hssess" not in response.cookies:
+            #     return
+            self._hssess = response.cookies.get("hssess", None)
+            self._hssess_webclient = response.cookies.get("hssess-webclient", None)
 
         if response.status_code != 200:
             if response.status_code == 401:
-                self._authorized = False
-                if self.__initialized:
-                    self.__initialized = False
-                    self._call(
-                        Request.LOGIN, {"username": self._usn, "password": self._pwd}
-                    )
-                    if self._authorized:
-                        self.__initialized = True
-                        self._call(api_type, payload)
-                    else:
-                        raise UnauthorizedException("Username or password incorrect")
+                # self._authorized = False
+                # if self.__initialized:
+                #     self.__initialized = False
+                #     self._call(
+                #         Request.LOGIN, {"username": self._usn, "password": self._pwd}
+                #     )
+                #     if self._authorized:
+                #         self.__initialized = True
+                #         self._call(api_type, payload)
+                #     else:
+                raise UnauthorizedException("Username or password incorrect")
             elif response.status_code == 403:
                 retry = threading.Timer(30, self._call, [api_type, payload])
                 retry.start()

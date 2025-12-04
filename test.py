@@ -31,10 +31,10 @@ print(f"Temperature compensation: {webasto.temperature_compensation}")
 print(f"Subscription expiration: {webasto.subscription_expiration}")
 
 # Get heading (if location is enabled)
-print(f"Heading: {webasto.heading}")
+# print(f"Heading: {webasto.heading}")
 
 # Get speed in km/h (if location is enabled)
-print(f"Speed: {webasto.speed} km/h")
+# print(f"Speed: {webasto.speed} km/h")
 
 # Set timeout of heater function to 2 hours (7200 seconds) and ventilation to 2 hours (7200 seconds)
 # webasto.set_timeout(7200, 7200)
