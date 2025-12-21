@@ -6,17 +6,25 @@ on:
     types: [published]
 
 jobs:
-  deploy:
+  release:
     runs-on: ubuntu-latest
     env:
       POETRY_VIRTUALENVS_CREATE: "false"
     steps:
-      - uses: actions/checkout@v3
+      - name: Check out repository
+        uses: actions/checkout@v6
 
-      # - name: Install poetry
-      #   run: |
-      #     pipx install poetry
-      #     pipx inject poetry .
+      - name: Update pyproject.toml version to ${{ github.event.release.tag_name }}
+        run: |
+          python3 ${{ github.workspace }}/.github/scripts/update_poetry_version_stamp.py --version ${{ github.event.release.tag_name }}
+
+      - name: Commit manifest update
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add ./pyproject.toml
+          git commit -m "Updated pyproject.toml version to ${{ github.event.release.tag_name }}" || echo "No changes to commit"
+          git push origin HEAD:main
 
       - name: Install poetry
         run: |
@@ -25,12 +33,9 @@ jobs:
 
       - name: Build
         run: |
-          poetry version ${{ github.ref_name }}
           poetry build
 
       - name: Publish
         run: |
           poetry config pypi-token.pypi ${{ secrets.PYPI_TOKEN }}
           poetry publish
-
-      # NOTE: Make sure you have added PYPI_API_TOKEN repository secret
