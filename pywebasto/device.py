@@ -174,30 +174,15 @@ class WebastoDevice:
         """Returns the current temperature."""
         return self.__temperature
 
-    @temperature.setter
-    def temperature(self, value: int) -> None:
-        """Sets the current temperature."""
-        self.__temperature = value
-
     @property
     def voltage(self) -> float:
         """Returns the current voltage."""
         return self.__voltage
 
-    @voltage.setter
-    def voltage(self, value: float) -> None:
-        """Sets the current voltage."""
-        self.__voltage = value
-
     @property
     def location(self) -> dict | bool:
         """Returns the current location."""
         return self.__location if self.__location["state"] == "ON" else False
-
-    @location.setter
-    def location(self, value: dict) -> None:
-        """Sets the current location."""
-        self.__location = value
 
     @property
     def output_main(self) -> bool:
@@ -207,11 +192,6 @@ class WebastoDevice:
         else:
             return False
 
-    @output_main.setter
-    def output_main(self, value: dict) -> None:
-        """Sets the main output state."""
-        self.__output_main = value
-
     @property
     def output_aux1(self) -> bool:
         """Get the aux output state."""
@@ -219,11 +199,6 @@ class WebastoDevice:
             return False if self.__output_aux1["state"] == "OFF" else True
         else:
             return False
-
-    @output_aux1.setter
-    def output_aux1(self, value: dict) -> None:
-        """Sets the aux output state."""
-        self.__output_aux1 = value
 
     @property
     def output_aux2(self) -> bool:
@@ -233,90 +208,45 @@ class WebastoDevice:
         else:
             return False
 
-    @output_aux2.setter
-    def output_aux2(self, value: dict) -> None:
-        """Sets the aux output state."""
-        self.__output_aux2 = value
-
     @property
     def is_ventilation(self) -> bool:
         """Get the mode of the output channel."""
         return self.__ventilation
-
-    @is_ventilation.setter
-    def is_ventilation(self, value: bool) -> None:
-        """Set the mode of the output channel."""
-        self.__ventilation = value
 
     @property
     def temperature_unit(self) -> str:
         """Get the temperature unit."""
         return "°C" if self.__iscelcius else "°F"
 
-    @temperature_unit.setter
-    def temperature_unit(self, value: bool) -> None:
-        """Set the temperature unit."""
-        self.__iscelcius = value
-
     @property
     def hardware_version(self) -> str:
         """Get the hardware version."""
         return self.__hardware_version
-
-    @hardware_version.setter
-    def hardware_version(self, value: str) -> None:
-        """Set the hardware version."""
-        self.__hardware_version = value
 
     @property
     def software_version(self) -> str:
         """Get the software version."""
         return self.__software_version
 
-    @software_version.setter
-    def software_version(self, value: str) -> None:
-        """Set the software version."""
-        self.__software_version = value
-
     @property
     def software_variant(self) -> str:
         """Get the software variant."""
         return self.__software_variant
-
-    @software_variant.setter
-    def software_variant(self, value: str) -> None:
-        """Set the software variant."""
-        self.__software_variant = value
 
     @property
     def allow_location(self) -> bool:
         """Get the location setting."""
         return self.__allow_location
 
-    @allow_location.setter
-    def allow_location(self, value: bool) -> None:
-        """Set the location setting."""
-        self.__allow_location = value
-
     @property
     def low_voltage_cutoff(self) -> float:
         """Get the low_voltage_cutoff setting."""
         return self.__low_voltage_cutoff
 
-    @low_voltage_cutoff.setter
-    def low_voltage_cutoff(self, value: float) -> None:
-        """Set the low_voltage_cutoff setting."""
-        self.__low_voltage_cutoff = value
-
     @property
     def temperature_compensation(self) -> float:
         """Get the ext_temp_comp setting."""
         return self.__temperature_compensation
-
-    @temperature_compensation.setter
-    def temperature_compensation(self, value: float) -> None:
-        """Set the ext_temp_comp setting."""
-        self.__temperature_compensation = value
 
     @property
     def device_id(self) -> str:
@@ -356,11 +286,6 @@ class WebastoDevice:
     def subscription_expiration(self) -> datetime:
         """Get subscription expiration."""
         return self.__subscription_expiration
-
-    @subscription_expiration.setter
-    def subscription_expiration(self, value: int) -> None:
-        """Set subscription expiration."""
-        self.__subscription_expiration = datetime.fromtimestamp(value)
 
     def __get_value(self, group: str, key: str) -> Any:
         """Get a value from the settings dict."""
