@@ -103,7 +103,7 @@ class WebastoConnect:
         if "GET" in api_type.name:
             return response.json()
 
-    def update(self, device_id: int | None = None) -> None:
+    def update(self, device_id: str | None = None) -> None:
         """Get current data from Webasto API."""
         self._data = self._call(Request.GET_DATA_NOPOLL)
         available_devices = self._list_devices()
@@ -120,6 +120,7 @@ class WebastoConnect:
                 self.devices.update({device["id"]: device_data})
         else:
             # A specific device was requested, only update that one
+            self._change_device(device_id)  # Switch device
             device_data = self.devices[device_id]  # type: ignore
             device_data.settings = self._call(Request.GET_SETTINGS)
             device_data.last_data = self._call(Request.GET_DATA)
@@ -303,4 +304,3 @@ class WebastoConnect:
         }
         self._call(Request.POST_SETTING, json.dumps(payload, indent=4))
         self.update()
-
