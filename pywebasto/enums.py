@@ -11,6 +11,7 @@ class Request(Enum):
     GET_DATA_NOPOLL = "/get_service_data?poll=false"
     POST_SETTING = "/post_settings"
     GET_SETTINGS = "/get_settings"
+    CHANGE_DEVICE = "/change_device"
 
 
 class Outputs(Enum):

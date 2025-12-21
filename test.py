@@ -9,80 +9,78 @@ webasto = WebastoConnect(environ["EMAIL"], environ["PASSWORD"])
 webasto.connect()
 webasto.update()
 
-# Get temperature
-print(f"Temperature: {webasto.temperature}")
 
-# Get battery voltage
-print(f"Voltage: {webasto.voltage}V")
+for id, device in webasto.devices.items():
+    print(f"Found device: {device.name} (ID: {device.device_id})")
+    # Get temperature
+    print(f"Temperature: {device.temperature}")
 
-# Is location services enabled?
-print(f"Allow location services: {webasto.allow_location}")
+    # Get battery voltage
+    print(f"Voltage: {device.voltage}V")
 
-# Get current location
-print(f"Current location: {webasto.location}")
+    # Is location services enabled?
+    print(f"Allow location services: {device.allow_location}")
 
-# Get low voltage cutoff setting
-print(f"Low voltage cutoff: {webasto.low_voltage_cutoff}V")
+    # Get current location
+    print(f"Current location: {device.location}")
 
-# Get temperature compensation value
-print(f"Temperature compensation: {webasto.temperature_compensation}")
+    # Get low voltage cutoff setting
+    print(f"Low voltage cutoff: {device.low_voltage_cutoff}V")
 
-# Get subscription expiration
-print(f"Subscription expiration: {webasto.subscription_expiration}")
+    # Get temperature compensation value
+    print(f"Temperature compensation: {device.temperature_compensation}")
 
-# Get heading (if location is enabled)
-# print(f"Heading: {webasto.heading}")
+    # Get subscription expiration
+    print(f"Subscription expiration: {device.subscription_expiration}")
 
-# Get speed in km/h (if location is enabled)
-# print(f"Speed: {webasto.speed} km/h")
+    # Set timeout of heater function to 2 hours (7200 seconds) and ventilation to 2 hours (7200 seconds)
+    # webasto.set_timeout(device, 7200, 7200)
 
-# Set timeout of heater function to 2 hours (7200 seconds) and ventilation to 2 hours (7200 seconds)
-# webasto.set_timeout(7200, 7200)
+    # Set low voltage cutoff to 11.3V
+    # webasto.set_low_voltage_cutoff(device, 11.3)
 
-# Set low voltage cutoff to 11.3V
-# webasto.set_low_voltage_cutoff(11.3)
+    # Set temperature compensation to -5C
+    # webasto.set_temperature_compensation(device, -5)
 
-# Set temperature compensation to -5C
-# webasto.set_temperature_compensation(-5)
+    # Enable ventilation mode
+    # webasto.ventilation_mode(device, False)
 
-# Enable ventilation mode
-# webasto.ventilation_mode(False)
+    # Toggle main output
+    # if device.output_main:
+    #     webasto.set_output_main(device, False)
+    # else:
+    #     webasto.set_output_main(device, True)
 
-# Is primary output on?
-if webasto.output_main_name is not False:
-    print(f"{webasto.output_main_name} on: {webasto.output_main}")
+    # Toggle aux1 output
+    # if device.output_aux1:
+    #     webasto.set_output_aux1(device, False)
+    # else:
+    #     webasto.set_output_aux1(device, True)
 
-# Is aux1 output on?
-if webasto.output_aux1_name is not False:
-    print(f"{webasto.output_aux1_name} on: {webasto.output_aux1}")
+    # Toggle aux2 output
+    # if device.output_aux2:
+    #     webasto.set_output_aux2(device, False)
+    # else:
+    #     webasto.set_output_aux2(device, True)
 
-# Is aux1 output on?
-if webasto.output_aux2_name is not False:
-    print(f"{webasto.output_aux2_name} on: {webasto.output_aux2}")
+    # Is primary output on?
+    if device.output_main_name is not False:
+        print(f"{device.output_main_name} on: {device.output_main}")
 
-# Toggle main output
-# if webasto.output_main:
-#     webasto.set_output_main(False)
-# else:
-#     webasto.set_output_main(True)
+    # Is aux1 output on?
+    if device.output_aux1_name is not False:
+        print(f"{device.output_aux1_name} on: {device.output_aux1}")
 
-# Toggle aux1 output
-# if webasto.output_aux1:
-#     webasto.set_output_aux1(False)
-# else:
-#     webasto.set_output_aux1(True)
+    # Is aux2 output on?
+    if device.output_aux2_name is not False:
+        print(f"{device.output_aux2_name} on: {device.output_aux2}")
 
-# Toggle aux1 output
-# if webasto.output_aux2:
-#     webasto.set_output_aux2(False)
-# else:
-#     webasto.set_output_aux2(True)
+    # Set timeout for aux1
+    # webasto.set_aux_timeout(device, 2400)
 
-# Set timeout for aux1
-# webasto.set_aux_timeout(2400)
+    # Set timeout for aux2
+    # webasto.set_aux_timeout(device, 2400, Outputs.AUX2)
 
-# Set timeout for aux2
-# webasto.set_aux_timeout(2400, Outputs.AUX2)
-
-# Update data
-# webasto.update()
+    # Update data
+    # webasto.update()
+    print("-----")

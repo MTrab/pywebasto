@@ -1,12 +1,12 @@
 """Module for interfacing with Webasto Connect."""
 
-from datetime import datetime
 import json
 import threading
 from typing import Any
 
 import requests
-import pyproj
+
+from .device import WebastoDevice
 
 from .consts import (
     API_URL,
@@ -28,49 +28,19 @@ class WebastoConnect:
 
     def __init__(self, username: str, password: str) -> None:
         """Initialize the component."""
-        self.__initialized: bool = False
-
         self._usn: str = username
         self._pwd: str = password
         self._hssess: str | None = None
         self._hssess_webclient: str | None = None
         self._authorized: bool = False
-        self._last_data = {}
-        self._dev_data = {}
-        self._settings = {}
-        self._output_main = {}
-        self._output_aux1 = {}
-        self._output_aux2 = {}
+        self._data: dict | None = None
 
-        self._timeout_vent: int = 3600
-        self._timeout_heat: int = 3600
-        self._timeout_aux1: int = 3600
-        self._timeout_aux2: int = 3600
-
-        self._icon_vent: str
-        self._icon_heat: str
-        self._icon_aux1: str
-        self._icon_aux2: str
-
-        self._ventilation: bool = False
-        self._iscelcius: bool = False
-
-        self._cur_lat: float = None
-        self._cur_lon: float = None
-        self._cur_time: datetime = None
-
-        self._prev_lat: float = None
-        self._prev_lon: float = None
-        self._prev_time: datetime = None
-
-        self._heading: int = 0
-        self._speed: float = 0
+        self.devices: dict[int, WebastoDevice] = {}
 
     def connect(self) -> None:
         """Connect to the API."""
         self._call(Request.LOGIN, {"username": self._usn, "password": self._pwd})
         if self._authorized:
-            self.__initialized = True
             self.update()
         else:
             raise UnauthorizedException("Username or password incorrect")
@@ -114,23 +84,11 @@ class WebastoConnect:
         if isinstance(self._hssess, type(None)) and isinstance(
             self._hssess_webclient, type(None)
         ):
-            # if "hssess" not in response.cookies:
-            #     return
             self._hssess = response.cookies.get("hssess", None)
             self._hssess_webclient = response.cookies.get("hssess-webclient", None)
 
         if response.status_code != 200:
             if response.status_code == 401:
-                # self._authorized = False
-                # if self.__initialized:
-                #     self.__initialized = False
-                #     self._call(
-                #         Request.LOGIN, {"username": self._usn, "password": self._pwd}
-                #     )
-                #     if self._authorized:
-                #         self.__initialized = True
-                #         self._call(api_type, payload)
-                #     else:
                 raise UnauthorizedException("Username or password incorrect")
             elif response.status_code == 403:
                 retry = threading.Timer(30, self._call, [api_type, payload])
@@ -145,109 +103,90 @@ class WebastoConnect:
         if "GET" in api_type.name:
             return response.json()
 
-    def update(self) -> None:
+    def update(self, device_id: int | None = None) -> None:
         """Get current data from Webasto API."""
-        self._settings = self._call(Request.GET_SETTINGS)
-        self.__get_timeouts()
-        self._last_data = self._call(Request.GET_DATA)
-        self._dev_data = self._call(Request.GET_DATA_NOPOLL)
+        self._data = self._call(Request.GET_DATA_NOPOLL)
+        available_devices = self._list_devices()
 
-        self._speed = 0
+        if isinstance(device_id, type(None)):
+            # Loop through all devices
+            for device in available_devices:
+                self._change_device(device["id"])  # Switch device
 
-        if (
-            self._last_data["location"]["state"] == "ON"
-            and self._last_data["location"]["timestamp"] != self._cur_time
-        ):
-            self._prev_time = self._cur_time
-            self._prev_lat = self._cur_lat
-            self._prev_lon = self._cur_lon
+                device_data = WebastoDevice(device["id"], device["name"])
+                device_data.settings = self._call(Request.GET_SETTINGS)
+                device_data.last_data = self._call(Request.GET_DATA)
 
-            self._cur_time = datetime.fromtimestamp(
-                self._last_data["location"]["timestamp"]
-            )
-            self._cur_lat = self._last_data["location"]["lat"]
-            self._cur_lon = self._last_data["location"]["lon"]
+                self.devices.update({device["id"]: device_data})
+        else:
+            # A specific device was requested, only update that one
+            device_data = self.devices[device_id]  # type: ignore
+            device_data.settings = self._call(Request.GET_SETTINGS)
+            device_data.last_data = self._call(Request.GET_DATA)
 
-            if (
-                not isinstance(self._prev_time, type(None))
-                and not isinstance(self._prev_lon, type(None))
-                and not isinstance(self._prev_lat, type(None))
-                and self._prev_time != self._cur_time
-            ):
-                geodesic = pyproj.Geod(ellps="WGS84")
-                fwd_bearing, _, distance = geodesic.inv(
-                    self._prev_lat, self._prev_lon, self._cur_lat, self._cur_lon
-                )
+            self.devices.update({device_id: device_data})  # type: ignore
 
-                if fwd_bearing < 0:
-                    self._heading = 360 + fwd_bearing
-                else:
-                    self._heading = fwd_bearing
+    def _change_device(self, device_id: str) -> None:
+        """Change the active device."""
+        self._call(Request.CHANGE_DEVICE, {"device": device_id})
 
-                if distance > 0:
-                    time_diff = (
-                        self._cur_time - self._prev_time
-                    ).total_seconds() / 3600
-                    if time_diff > 0:
-                        self._speed = (distance / 1000) / time_diff
+    def _list_devices(self) -> list[dict]:
+        """List all devices associated with the account."""
+        device_list = []
+        if isinstance(self._data, type(None)):
+            return device_list
 
-        if self._last_data["temperature"][-1] == "C":
-            self._iscelcius = True
+        for device in self._data["account_info"]["devices"]:
+            device_list.append({"id": device[0], "name": device[1]})
 
-        for output in self._last_data["outputs"]:
-            if output["line"] == "OUTH" or output["line"] == "OUTV":
-                self._output_main = output
-                if output["line"] == "OUTH":
-                    self._ventilation = False
-                    self._icon_heat = output["icon"]
-                else:
-                    self._ventilation = True
-                    self._icon_vent = output["icon"]
-            elif output["line"] == "OUT1":
-                self._output_aux1 = output
-                self._icon_aux1 = output["icon"]
-            elif output["line"] == "OUT2":
-                self._output_aux2 = output
-                self._icon_aux2 = output["icon"]
+        return device_list
 
-    def set_output_main(self, state: bool) -> None:
+    def set_output_main(self, device: WebastoDevice, state: bool) -> None:
         """Turn on or off the heater or ventilation."""
+        self._change_device(device_id=device.device_id)
+
         if state:
-            if self._ventilation:
+            if device.is_ventilation:
                 self._call(Request.COMMAND, CMD_VENTILATION_ON)
             else:
                 self._call(Request.COMMAND, CMD_HEATER_ON)
         else:
-            if self._ventilation:
+            if device.is_ventilation:
                 self._call(Request.COMMAND, CMD_VENTILATION_OFF)
             else:
                 self._call(Request.COMMAND, CMD_HEATER_OFF)
         self.update()
 
-    def set_output_aux1(self, state: bool) -> None:
+    def set_output_aux1(self, device: WebastoDevice, state: bool) -> None:
         """Turn on or off the aux1 output."""
+        self._change_device(device_id=device.device_id)
+
         if state:
             self._call(Request.COMMAND, CMD_AUX1_ON)
         else:
             self._call(Request.COMMAND, CMD_AUX1_OFF)
         self.update()
 
-    def set_output_aux2(self, state: bool) -> None:
+    def set_output_aux2(self, device: WebastoDevice, state: bool) -> None:
         """Turn on or off the aux2 output."""
+        self._change_device(device_id=device.device_id)
+
         if state:
             self._call(Request.COMMAND, CMD_AUX2_ON)
         else:
             self._call(Request.COMMAND, CMD_AUX2_OFF)
         self.update()
 
-    def ventilation_mode(self, state: bool) -> None:
+    def ventilation_mode(self, device: WebastoDevice, state: bool) -> None:
         """Turn ventilation mode on or off."""
-        vent_sec = self._timeout_vent % (24 * 3600)
+        self._change_device(device_id=device.device_id)
+
+        vent_sec = device.timeout_vent % (24 * 3600)
         vent_h = vent_sec // 3600
         vent_sec = vent_sec % 3600
         vent_m = vent_sec // 60
 
-        heat_sec = self._timeout_heat % (24 * 3600)
+        heat_sec = device.timeout_heat % (24 * 3600)
         heat_h = heat_sec // 3600
         heat_sec = heat_sec % 3600
         heat_m = heat_sec // 60
@@ -280,29 +219,34 @@ class WebastoConnect:
 
     def set_main_timeout(
         self,
+        device: WebastoDevice,
         heater: int | None = None,
         ventilation: int | None = None,
     ) -> None:
         """Sets timeout of main output port in seconds."""
+        self._change_device(device_id=device.device_id)
+
         if not isinstance(heater, type(None)):
-            self._timeout_heat = heater
+            device.timeout_heat = heater
 
         if not isinstance(ventilation, type(None)):
-            self._timeout_vent = ventilation
+            device.timeout_vent = ventilation
 
-        self.ventilation_mode(self._ventilation)
+        self.ventilation_mode(device, device.is_ventilation)
 
     def set_aux_timeout(
         self,
-        timeout: int | None = None,
+        device: WebastoDevice,
+        timeout: int,
         aux: Outputs = Outputs.AUX1,
     ) -> None:
         """Sets timeout of an AUX port in seconds."""
+        self._change_device(device_id=device.device_id)
 
         if aux == Outputs.AUX1:
-            self._timeout_aux1 = timeout
+            device.timeout_aux1 = timeout
         elif aux == Outputs.AUX2:
-            self._timeout_aux2 = timeout
+            device.timeout_aux2 = timeout
 
         heat_sec = timeout % (24 * 3600)
         heat_h = heat_sec // 3600
@@ -319,12 +263,12 @@ class WebastoConnect:
             "service_settings": {
                 f"{aux.value}_on": True,
                 f"{aux.value}_name": (
-                    self.output_aux1_name
+                    device.output_aux1_name
                     if aux == Outputs.AUX1
-                    else self.output_aux2_name
+                    else device.output_aux2_name
                 ),
                 f"{aux.value}_icon": (
-                    self._icon_aux1 if aux == Outputs.AUX1 else self._icon_aux1
+                    device.icon_aux1 if aux == Outputs.AUX1 else device.icon_aux2
                 ),
             },
             "location_events": None,
@@ -334,8 +278,9 @@ class WebastoConnect:
         self._call(Request.POST_SETTING, json.dumps(data))
         self.update()
 
-    def set_low_voltage_cutoff(self, value: float) -> None:
+    def set_low_voltage_cutoff(self, device: WebastoDevice, value: float) -> None:
         """Set the low voltage cutoff value."""
+        self._change_device(device_id=device.device_id)
 
         payload = {
             "device_settings": {"low_voltage_cutoff": value},
@@ -346,8 +291,9 @@ class WebastoConnect:
         self._call(Request.POST_SETTING, json.dumps(payload))
         self.update()
 
-    def set_temperature_compensation(self, value: float) -> None:
+    def set_temperature_compensation(self, device: WebastoDevice, value: float) -> None:
         """Set the temperature compensation value."""
+        self._change_device(device_id=device.device_id)
 
         payload = {
             "device_settings": {"ext_temp_comp": value},
@@ -358,150 +304,3 @@ class WebastoConnect:
         self._call(Request.POST_SETTING, json.dumps(payload, indent=4))
         self.update()
 
-    @property
-    def temperature(self) -> int:
-        """Returns the current temperature."""
-        return self._last_data["temperature"][: len(self._last_data["temperature"]) - 1]
-
-    @property
-    def voltage(self) -> float:
-        """Returns the current voltage."""
-        return self._last_data["voltage"][: len(self._last_data["voltage"]) - 1]
-
-    @property
-    def location(self) -> dict:
-        """Returns the current location."""
-        return (
-            self._last_data["location"]
-            if self._last_data["location"]["state"] == "ON"
-            else None
-        )
-
-    @property
-    def output_main(self) -> bool:
-        """Get the main output state."""
-        if "state" in self._output_main:
-            return False if self._output_main["state"] == "OFF" else True
-        else:
-            return False
-
-    @property
-    def output_aux1(self) -> bool:
-        """Get the aux output state."""
-        if "state" in self._output_aux1:
-            return False if self._output_aux1["state"] == "OFF" else True
-        else:
-            return False
-
-    @property
-    def output_aux2(self) -> bool:
-        """Get the aux output state."""
-        if "state" in self._output_aux2:
-            return False if self._output_aux2["state"] == "OFF" else True
-        else:
-            return False
-
-    @property
-    def is_ventilation(self) -> bool:
-        """Get the mode of the output channel."""
-        return self._ventilation
-
-    @property
-    def temperature_unit(self) -> bool:
-        """Get the temperature unit."""
-        return "°C" if self._iscelcius else "°F"
-
-    @property
-    def hardware_version(self) -> str:
-        """Get the hardware version."""
-        return self._settings["hw_version"]
-
-    @property
-    def software_version(self) -> str:
-        """Get the software version."""
-        return self._settings["sw_version"]
-
-    @property
-    def software_variant(self) -> str:
-        """Get the software variant."""
-        return self._settings["sw_variant"]
-
-    @property
-    def allow_location(self) -> str:
-        """Get the location setting."""
-        return self.__get_value("general", "allow_GPS")
-
-    @property
-    def low_voltage_cutoff(self) -> str:
-        """Get the low_voltage_cutoff setting."""
-        return self.__get_value("general", "low_voltage_cutoff")
-
-    @property
-    def temperature_compensation(self) -> str:
-        """Get the ext_temp_comp setting."""
-        return self.__get_value("general", "ext_temp_comp")
-
-    @property
-    def device_id(self) -> str:
-        """Get the ID of the device (QR code ID)"""
-        return self._dev_data["id"]
-
-    @property
-    def name(self) -> str:
-        """Get the name of the device."""
-        return self._dev_data["alias"]
-
-    @property
-    def output_main_name(self) -> str:
-        """Get the main output name."""
-        if "name" in self._output_main:
-            return self._output_main["name"] or "Primary"
-        else:
-            return False
-
-    @property
-    def output_aux1_name(self) -> str:
-        """Get the aux1 output name."""
-        if "name" in self._output_aux1:
-            return self._output_aux1["name"] or "Output 1"
-        else:
-            return False
-
-    @property
-    def output_aux2_name(self) -> str:
-        """Get the aux2 output name."""
-        if "name" in self._output_aux2:
-            return self._output_aux2["name"] or "Output 2"
-        else:
-            return False
-
-    @property
-    def subscription_expiration(self) -> datetime:
-        """Get subscription expiration."""
-        expiration = self._dev_data["subscription"]["expiration"]
-        return datetime.fromtimestamp(expiration)
-
-    def __get_value(self, group: str, key: str) -> Any:
-        """Get a value from the settings dict."""
-        for g in self._settings["settings_tab"]:
-            if g["group"] != group:
-                continue
-
-            for o in g["options"]:
-                if o["key"] == key:
-                    return o["value"]
-
-    def __get_timeouts(self) -> None:
-        for g in self._settings["settings_tab"]:
-            if g["group"] not in ["webasto", "outputs"]:
-                continue
-
-            for o in g["options"]:
-                if o["key"] == "OUTH":
-                    self._timeout_heat = o["timeout"]
-                elif o["key"] == "OUTV":
-                    self._timeout_vent = o["timeout"]
-                elif o["key"] == "OUT1":
-                    self._timeout_aux1 = o["timeout"]
-                elif o["key"] == "OUT2":
-                    self._timeout_aux2 = o["timeout"]
