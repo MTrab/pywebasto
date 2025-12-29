@@ -1,8 +1,8 @@
 """Module for interfacing with Webasto Connect."""
 
 import json
+import sys
 import threading
-from typing import Any
 
 import requests
 
@@ -21,6 +21,9 @@ from .consts import (
 )
 from .enums import Outputs, Request
 from .exceptions import InvalidRequestException, UnauthorizedException
+
+if sys.version_info < (3, 11, 0):
+    sys.exit("The pyWorxcloud module requires Python 3.11.0 or later")
 
 
 class WebastoConnect:
