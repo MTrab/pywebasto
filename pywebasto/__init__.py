@@ -116,6 +116,7 @@ class WebastoConnect:
                 device_data = WebastoDevice(device["id"], device["name"])
                 device_data.settings = self._call(Request.GET_SETTINGS)
                 device_data.last_data = self._call(Request.GET_DATA)
+                device_data.dev_data = self._call(Request.GET_DATA_NOPOLL)
 
                 self.devices.update({device["id"]: device_data})
         else:
@@ -124,6 +125,7 @@ class WebastoConnect:
             device_data = self.devices[device_id]  # type: ignore
             device_data.settings = self._call(Request.GET_SETTINGS)
             device_data.last_data = self._call(Request.GET_DATA)
+            device_data.dev_data = self._call(Request.GET_DATA_NOPOLL)
 
             self.devices.update({device_id: device_data})  # type: ignore
 

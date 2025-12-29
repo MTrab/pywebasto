@@ -25,7 +25,7 @@ class WebastoDevice:
         self.__allow_location: bool = False
         self.__low_voltage_cutoff: float = 0.0
         self.__temperature_compensation: float = 0.0
-        self.__subscription_expiration: datetime = datetime.now()
+        self.__subscription_expiration: datetime | None = None
         self.__last_data: dict | None = {}
         self.__dev_data: dict | None = {}
         self.__settings: dict | None = {}
@@ -107,6 +107,7 @@ class WebastoDevice:
     def last_data(self, value: dict | None) -> None:
         """Sets the last data dictionary."""
         self.__last_data = value
+
         if self.__last_data is None:
             return
 
@@ -146,6 +147,12 @@ class WebastoDevice:
     def dev_data(self, value: dict | None) -> None:
         """Sets the device data dictionary."""
         self.__dev_data = value
+        if self.__dev_data is None:
+            return
+
+        self.__subscription_expiration = datetime.fromtimestamp(
+            value["subscription"]["expiration"]
+        )
 
     @property
     def settings(self) -> dict | None:
