@@ -76,3 +76,22 @@ set_main_timeout | Set the timeout for auto off for the main output |`device` se
 set_aux_timeout | Set the timeout for auto off for an AUX output | `device` send command to this device of WebastoDevice class<br/>`timeout` int indicating timeout in seconds<br/>`aux` _optional_ Outputs ENUM indicating AUX to be changed, default: `Outputs.AUX1`
 set_low_voltage_cutoff | Sets the minimum voltage before shutting off the device | `device` send command to this device of WebastoDevice class<br/>`value` minimum voltage as float
 set_temperature_compensation | Set the temperature compensatioon for the device | `device` send command to this device of WebastoDevice class<br/>`value` temperature compensation as float
+
+# My heater doesn't show up
+
+If your heater doesn't show up in the integration, please make sure it is connected to the e-mail used.
+
+* Login to https://my.webastoconnect.com _USING THE SAME EMAIL AND PASSWORD_ as used in the integration
+* Press `Account`
+
+Make sure your device is listed under devices
+
+If your device is NOT listed under devices:
+
+* Open the ThermoConnect app on your phone
+* Select the missing device (If you have more than one connected)
+* Click on the `"My Webasto Connect` button in the lower left
+* Choose `Login with mobile browser`
+* Login with your existing email and password
+
+The device should now be linked to your email account and will show up after a restart of Home Assistant, or after reloading the integration
