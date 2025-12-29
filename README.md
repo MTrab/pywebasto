@@ -79,9 +79,9 @@ set_temperature_compensation | Set the temperature compensatioon for the device 
 
 # My heater doesn't show up
 
-If your heater doesn't show up in the integration, please make sure it is connected to the e-mail used.
+If your heater doesn't show up in the module, please make sure it is connected to the e-mail used.
 
-* Login to https://my.webastoconnect.com _USING THE SAME EMAIL AND PASSWORD_ as used in the integration
+* Login to https://my.webastoconnect.com _USING THE SAME EMAIL AND PASSWORD_ as used in the in this module
 * Press `Account`
 
 Make sure your device is listed under devices
@@ -94,4 +94,4 @@ If your device is NOT listed under devices:
 * Choose `Login with mobile browser`
 * Login with your existing email and password
 
-The device should now be linked to your email account and will show up after a restart of Home Assistant, or after reloading the integration
+The device should now be linked to your email account and will show up at next run
