@@ -164,10 +164,11 @@ class WebastoDevice:
         self.__low_voltage_cutoff = self.__get_value("general", "low_voltage_cutoff")
         self.__temperature_compensation = self.__get_value("general", "ext_temp_comp")
 
-        self.timeout_heat = self.__get_value("settings_tab", "OUTH")
-        self.timeout_vent = self.__get_value("settings_tab", "OUTV")
-        self.timeout_aux1 = self.__get_value("settings_tab", "OUT1")
-        self.timeout_aux2 = self.__get_value("settings_tab", "OUT2")
+        # self.timeout_heat = self.__get_value("settings_tab", "OUTH")
+        # self.timeout_vent = self.__get_value("settings_tab", "OUTV")
+        # self.timeout_aux1 = self.__get_value("settings_tab", "OUT1")
+        # self.timeout_aux2 = self.__get_value("settings_tab", "OUT2")
+        self.__get_timeouts()
 
     @property
     def temperature(self) -> int:
@@ -299,3 +300,22 @@ class WebastoDevice:
             for o in g["options"]:
                 if o["key"] == key:
                     return o["value"]
+
+    def __get_timeouts(self) -> None:
+        """Get output timeouts from the settings dict."""
+        if self.settings is None:
+            return None
+
+        for g in self.settings["settings_tab"]:
+            if g["group"] not in ["webasto", "outputs"]:
+                continue
+
+            for o in g["options"]:
+                if o["key"] == "OUTH":
+                    self.__timeout_heat = o["timeout"]
+                elif o["key"] == "OUTV":
+                    self.__timeout_vent = o["timeout"]
+                elif o["key"] == "OUT1":
+                    self.__timeout_aux1 = o["timeout"]
+                elif o["key"] == "OUT2":
+                    self.__timeout_aux2 = o["timeout"]
