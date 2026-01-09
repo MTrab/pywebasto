@@ -10,6 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       POETRY_VIRTUALENVS_CREATE: "false"
+    permissions:
+      contents: write
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
