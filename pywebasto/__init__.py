@@ -88,7 +88,11 @@ class WebastoConnect:
 
                 # Gem cookies hvis de ikke allerede er sat
                 if self._hssess is None and self._hssess_webclient is None:
-                    self._hssess = response.cookies.get("hssess").value if "hssess" in response.cookies else None
+                    self._hssess = (
+                        response.cookies.get("hssess").value
+                        if "hssess" in response.cookies
+                        else None
+                    )
                     self._hssess_webclient = (
                         response.cookies.get("hssess-webclient").value
                         if "hssess-webclient" in response.cookies
@@ -117,36 +121,6 @@ class WebastoConnect:
 
                 if "GET" in api_type.name:
                     return await response.json(content_type=None)
-
-        # response = requests.request(
-        #     "POST",
-        #     f"{API_URL}{api_type.value}",
-        #     headers=self.assemble_headers(),
-        #     data=payload,
-        #     timeout=60,
-        # )
-
-        # if isinstance(self._hssess, type(None)) and isinstance(
-        #     self._hssess_webclient, type(None)
-        # ):
-        #     self._hssess = response.cookies.get("hssess", None)
-        #     self._hssess_webclient = response.cookies.get("hssess-webclient", None)
-
-        # if response.status_code != 200:
-        #     if response.status_code == 401:
-        #         raise UnauthorizedException("Username or password incorrect")
-        #     elif response.status_code == 403:
-        #         retry = threading.Timer(30, self._call, [api_type, payload])
-        #         retry.start()
-        #     else:
-        #         raise InvalidRequestException(
-        #             f"API reported {response.status_code}: {response.text}"
-        #         )
-        # else:
-        #     self._authorized = True
-
-        # if "GET" in api_type.name:
-        #     return response.json()
 
     async def update(self, device_id: str | None = None) -> None:
         """Get current data from Webasto API."""
