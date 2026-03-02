@@ -1,6 +1,6 @@
 """Device class for Webasto devices."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -199,6 +199,26 @@ class WebastoDevice:
             return False if self.__output_main["state"] == "OFF" else True
         else:
             return False
+
+    @property
+    def output_main_ontime(self) -> int | None:
+        """Get the unix timestamp for when the main output will stop."""
+        if self.__output_main.get("state") != "ON":
+            return None
+
+        ontime = self.__output_main.get("ontime")
+        if isinstance(ontime, int | float) and ontime > 0:
+            return int(ontime)
+
+        return None
+
+    @property
+    def output_main_end_time(self) -> datetime | None:
+        """Get the UTC timestamp for when the main output will stop."""
+        if (ontime := self.output_main_ontime) is None:
+            return None
+
+        return datetime.fromtimestamp(ontime, timezone.utc)
 
     @property
     def output_aux1(self) -> bool:
