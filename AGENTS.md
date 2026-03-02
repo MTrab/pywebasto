@@ -12,6 +12,22 @@ Follow these rules strictly.
 The API is unofficial and reverse engineered.
 There is no official Webasto API documentation available for this integration.
 
+## No-Assumption Rule (Facts Only)
+
+If required technical details are missing, the agent MUST:
+
+- Locate the information inside the repository (docs, source, CI config, comments), or
+- Explicitly request clarification before implementing a dependent solution
+
+The agent must NOT:
+
+- Invent API endpoints
+- Invent protocol structures
+- Guess authentication flows
+- Introduce undocumented environment variables
+
+If there is uncertainty, stop and request clarification.
+
 ## Critical Constraint: No Official API Docs
 
 Because official API documentation does not exist, all protocol understanding must come from:
@@ -20,15 +36,7 @@ Because official API documentation does not exist, all protocol understanding mu
 - Existing docs in this repository
 - Real network captures from `my.webastoconnect.com`
 
-The agent must not invent:
-
-- Endpoints
-- Request/response fields
-- Authentication flows
-- Cookie behavior
-- Command payload formats
-
-If required details are missing, stop and ask for a capture or clarification.
+Use the No-Assumption Rule for all unknown protocol details.
 
 ## Network Capture Workflow (Required for API Changes)
 
@@ -41,15 +49,28 @@ When changing login flow, commands, settings, parsing, or endpoint behavior:
 
 If a change is not verifiable from code or captures, do not implement it as fact.
 
-## Security and Data Handling
+## Security Constraints
 
-Network captures may contain sensitive data.
-The agent must:
+The agent must NOT:
 
-- Never commit raw captures that include credentials, cookies, device IDs, GPS, or tokens
-- Never log secrets in plaintext
-- Sanitize any sample payloads before adding to docs/tests
-- Avoid printing full headers when they contain session cookies
+- Introduce telemetry without explicit approval
+- Send user data to third-party services
+- Add undocumented network endpoints
+- Disable encryption for convenience
+- Commit raw captures that include credentials, cookies, device IDs, GPS, or tokens
+- Log secrets in plaintext
+- Add unsanitized payload samples to docs/tests
+- Print full headers when they contain session cookies
+
+All cloud endpoints must be documented in `docs/`.
+
+## Code Standards
+
+- Follow existing project formatting and naming conventions.
+- Do not introduce large refactors in the same change as functional modifications unless explicitly requested.
+- Keep commits small and focused.
+- Avoid introducing new dependencies unless justified.
+- Use `ruff` as formatter/linter in this repository.
 
 ## Coding Rules
 
@@ -58,7 +79,6 @@ The agent must:
 - Reuse existing constants/enums/exceptions when possible.
 - Use explicit error handling for HTTP failures and unauthorized states.
 - Keep timeouts explicit for network calls.
-- Do not add dependencies unless clearly justified.
 
 ## Testing and Validation
 
@@ -81,9 +101,49 @@ Update documentation when behavior changes, especially for:
 
 Prefer concise, evidence-based notes over broad speculation.
 
-## Git and PR Hygiene
+## Git Workflow
 
-- Work on a dedicated branch, not `main`/`master`.
-- Keep commits small and reviewable.
-- Do not include secrets or private captures in commits.
-- Include a clear testing section in PR descriptions.
+Branch naming convention:
+
+```
+feature/<name>
+fix/<name>
+refactor/<name>
+chore/<name>
+```
+
+Each PR must include:
+
+- A clear description of changes
+- Test strategy (automated or manual)
+- Known limitations
+- Any required configuration changes
+- If the PR resolves an issue, include the text `Fixes #<issue-id>`
+
+The agent must NOT merge a PR without explicit permission.
+
+The agent must NOT use administrative merge overrides (for example `gh pr merge --admin`).
+
+Before merging any PR, the agent MUST wait until all required CI/status checks are green/passing.
+
+When a branch is merged it must also be deleted both local and remote, and changes merged to `master` must be pulled.
+
+## When in Doubt
+
+The agent must stop and request clarification regarding:
+
+- Authentication flow
+- API contract details
+- CI expectations
+- Required vs optional features
+
+## Definition of Done
+
+A change is considered complete when:
+
+- All relevant tests pass locally and in CI
+- New behavior is covered by tests (where feasible)
+- Documentation is updated if configuration or API changes
+- No secrets are committed
+- Linting and formatting checks pass
+- The implementation adheres strictly to the No-Assumption Rule
