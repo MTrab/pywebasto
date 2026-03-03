@@ -1,0 +1,41 @@
+1 timer:
+curl 'https://my.webastoconnect.com/webapi/save_timers' \
+  -H 'Accept: */*' \
+  -H 'Accept-Language: da,en;q=0.9,en-GB;q=0.8,en-US;q=0.7,no;q=0.6' \
+  -H 'Cache-Control: no-cache' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/x-www-form-urlencoded; charset=UTF-8' \
+  -b 'cookies_accepted=4; i18next=en; hssess-webclient=479da2723cbf442b935590e5ec98d7c7; lang=en; def_max_duration=0%3A50; def_comfort_level=5' \
+  -H 'Origin: https://my.webastoconnect.com' \
+  -H 'Pragma: no-cache' \
+  -H 'Referer: https://my.webastoconnect.com/index.html?lang=en' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0' \
+  -H 'X-Requested-With: XMLHttpRequest' \
+  -H 'sec-ch-ua: "Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  --data-raw '{"line":"OUTH","timers":[{"type":"simple","start":1380,"duration":1800,"repeat":72,"location":{"lat":"REDACTED_LAT","lon":"REDACTED_LON"},"enabled":true}]}'
+
+2 timers (1 no repeat):
+curl 'https://my.webastoconnect.com/webapi/save_timers' \
+  -H 'Accept: */*' \
+  -H 'Accept-Language: da,en;q=0.9,en-GB;q=0.8,en-US;q=0.7,no;q=0.6' \
+  -H 'Cache-Control: no-cache' \
+  -H 'Connection: keep-alive' \
+  -H 'Content-Type: application/x-www-form-urlencoded; charset=UTF-8' \
+  -b 'cookies_accepted=4; i18next=en; hssess-webclient=479da2723cbf442b935590e5ec98d7c7; lang=en; def_max_duration=0%3A50; def_comfort_level=5' \
+  -H 'Origin: https://my.webastoconnect.com' \
+  -H 'Pragma: no-cache' \
+  -H 'Referer: https://my.webastoconnect.com/index.html?lang=en' \
+  -H 'Sec-Fetch-Dest: empty' \
+  -H 'Sec-Fetch-Mode: cors' \
+  -H 'Sec-Fetch-Site: same-origin' \
+  -H 'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0' \
+  -H 'X-Requested-With: XMLHttpRequest' \
+  -H 'sec-ch-ua: "Not:A-Brand";v="99", "Microsoft Edge";v="145", "Chromium";v="145"' \
+  -H 'sec-ch-ua-mobile: ?0' \
+  -H 'sec-ch-ua-platform: "Windows"' \
+  --data-raw '{"line":"OUTH","timers":[{"type":"simple","repeat":72,"start":1380,"duration":1800,"location":{"lat":"REDACTED_LAT","lon":"REDACTED_LON"},"enabled":true},{"type":"simple","start":255,"duration":5400,"repeat":0,"location":{"lat":"REDACTED_LAT","lon":"REDACTED_LON"},"enabled":true}]}' ;
