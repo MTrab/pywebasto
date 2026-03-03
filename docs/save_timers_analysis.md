@@ -103,9 +103,25 @@ Observed fields:
 - Disable/enable: identical payload except `enabled`.
 - Edit to smart/departure mode: `type` is `"smart"`, and `maxDuration`, `comfortLevel`, `departure` appear.
 
+## Repeat bitmask mapping (confirmed)
+
+From a capture with seven one-day timers (one per weekday), the following mapping is confirmed:
+
+- `64` = Monday
+- `1` = Tuesday
+- `2` = Wednesday
+- `4` = Thursday
+- `8` = Friday
+- `16` = Saturday
+- `32` = Sunday
+
+Examples:
+
+- `repeat: 72` (`64 + 8`) = Monday + Friday
+- `repeat: 31` (`1 + 2 + 4 + 8 + 16`) = Tuesday-Saturday
+
 ## Known uncertainties (not proven by these captures alone)
 
-- Final bit mapping of `repeat`.
 - Whether `enabled` is required in every edit scenario (one edit example omits it).
 - Response contract (status codes/body) is not documented in these dump files.
 
@@ -127,12 +143,10 @@ Observed fields:
 The current captures are enough to draft payload builders, but not enough to claim a complete API contract.
 To reach a strong, implementation-grade analysis, the following evidence is still needed:
 
-1. `repeat` bitmask mapping proof
-   - Record one-day-only timers for each weekday (7 captures), then map mask bits deterministically.
-2. Field requirement matrix
+1. Field requirement matrix
    - Verify which fields are required/optional per timer type (`simple` vs `smart`).
    - Specifically verify whether `enabled` is optional on edit, and defaults when omitted.
-3. Limits and validation rules
+2. Limits and validation rules
    - Max number of timers and allowed `comfortLevel` range.
    - Backend handling of very large values (with `0` and negative values treated as invalid).
 
@@ -141,7 +155,6 @@ To reach a strong, implementation-grade analysis, the following evidence is stil
 1. One successful create/edit/delete flow with full request + full response payloads.
 2. One explicit auth failure example for `save_timers`.
 3. One validation failure example (malformed/invalid timer payload).
-4. Seven weekday captures to lock `repeat` mapping.
 
 ## Suggested next implementation steps
 
@@ -153,4 +166,3 @@ To reach a strong, implementation-grade analysis, the following evidence is stil
    - likely accept a single timer object from the caller
    - internally merge it into the full API-fetched timer list
    - preserve API order and send the full array in `save_timers`
-6. Add capture-based verification of repeat behavior if UI must show accurate "next run" times.
