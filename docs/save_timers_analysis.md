@@ -10,6 +10,12 @@ This note is based on concrete captures in:
 
 No official Webasto documentation was used.
 
+## Current implementation scope
+
+- In-scope for upcoming module work: `simple` timers only.
+- Out-of-scope for now: `smart` timers, due to lack of access to a setup that supports/verifies smart-timer behavior.
+- `smart` observations in this document are kept as protocol notes, not as active implementation targets.
+
 ## Endpoint and method
 
 - URL: `https://my.webastoconnect.com/webapi/save_timers`
@@ -82,6 +88,10 @@ Observed fields:
 - `departure` (int)
 - `location.lat` (string), `location.lon` (string)
 
+Status:
+
+- Observed in captures, but currently out-of-scope for implementation.
+
 ## Operation behavior inferred from payloads
 
 - Create timer:
@@ -122,12 +132,16 @@ Examples:
 
 ## Known uncertainties (not proven by these captures alone)
 
-- Whether `enabled` is required in every edit scenario (one edit example omits it).
 - Response contract (status codes/body) is not documented in these dump files.
+
+## Field requirements
+
+- For `simple` timers in current scope, no fields are treated as optional.
+- `enabled` must always be explicitly set to either `true` (enabled) or `false` (disabled).
 
 ## Duration semantics
 
-- `duration` and `maxDuration` are considered unbounded (no practical upper limit enforced by the API contract used here).
+- `duration` is considered unbounded (no practical upper limit enforced by the API contract used here).
 - Numeric timer values are valid only when strictly greater than `0`.
 
 ## Concurrency semantics
@@ -136,19 +150,8 @@ Examples:
 
 ## Time semantics
 
-- `start` and `departure` are interpreted as UTC-based time values.
-
-## Missing for a solid analysis
-
-The current captures are enough to draft payload builders, but not enough to claim a complete API contract.
-To reach a strong, implementation-grade analysis, the following evidence is still needed:
-
-1. Field requirement matrix
-   - Verify which fields are required/optional per timer type (`simple` vs `smart`).
-   - Specifically verify whether `enabled` is optional on edit, and defaults when omitted.
-2. Limits and validation rules
-   - Max number of timers and allowed `comfortLevel` range.
-   - Backend handling of very large values (with `0` and negative values treated as invalid).
+- `start` is interpreted as a UTC-based time value.
+- `departure` is observed for `smart` timers only (currently out-of-scope).
 
 ## Minimum capture set recommended before coding API-level behavior
 
@@ -158,7 +161,7 @@ To reach a strong, implementation-grade analysis, the following evidence is stil
 
 ## Suggested next implementation steps
 
-1. Introduce internal Python timer models for `simple` and `smart`.
+1. Introduce an internal Python timer model for `simple` timers.
 2. Build a serializer that always emits full `{"line":"OUTH","timers":[...]}` payloads.
 3. Add field/type validation before POST.
 4. Derive supported output lines from API data instead of hardcoding assumptions.

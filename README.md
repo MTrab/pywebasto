@@ -27,7 +27,12 @@ for id, device in webasto.devices.items():
     print(f"Temperature: {device.temperature}")
 ```
 
-More examples can be found in the `test.py`file
+More examples can be found in the `example.py` file
+
+## Web Interface Polling
+Observed behavior in the Webasto web interface (`my.webastoconnect.com`):
+
+- Default data refresh interval is `15` seconds - don't refresh faster or you risk getting banned.
 
 ## Available properties
 This list indicates the available properties for a heater
