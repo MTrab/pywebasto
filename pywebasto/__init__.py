@@ -225,9 +225,10 @@ class WebastoConnect:
         line: Outputs = Outputs.HEATER,
     ) -> None:
         """Save a full simple-timer list using the observed `save_timers` contract."""
-        if line != Outputs.HEATER:
+        if line not in (Outputs.HEATER, Outputs.VENTILATION):
             raise InvalidRequestException(
-                "save_timers is only verified for line='OUTH' (Outputs.HEATER)"
+                "save_timers is only verified for line='OUTH' (Outputs.HEATER) "
+                "and line='OUTV' (Outputs.VENTILATION)"
             )
 
         await self._change_device(device_id=device.device_id)

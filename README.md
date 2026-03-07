@@ -85,7 +85,7 @@ This list indicates the available functions
 | connect | Function used to connect to the API | |
 | update | Fetch latest data from the API | `device_id` if set, only update this device |
 | get_timers | Read `simple` timers for a given output line from API data | `device` send command to this device of WebastoDevice class<br/>`line` _optional_ Outputs ENUM, default: `Outputs.HEATER` |
-| save_timers | Save a full list of `simple` timers via `/save_timers` | `device` send command to this device of WebastoDevice class<br/>`timers` list of `SimpleTimer` objects<br/>`line` _optional_ Outputs ENUM, currently only `Outputs.HEATER` is supported |
+| save_timers | Save a full list of `simple` timers via `/save_timers` | `device` send command to this device of WebastoDevice class<br/>`timers` list of `SimpleTimer` objects<br/>`line` _optional_ Outputs ENUM, currently supports `Outputs.HEATER` and `Outputs.VENTILATION` |
 | set_output_main | Set current state of main output | `device` send command to this device of WebastoDevice class<br/>`state` bool indicating if it should be switched on (`true`) or off (`false`) |
 | set_output_aux1 | Set current state of AUX1 output | `device` send command to this device of WebastoDevice class<br/>`state` bool indicating if it should be switched on (`true`) or off (`false`) |
 | set_output_aux2 | Set current state of AUX2 output | `device` send command to this device of WebastoDevice class<br/>`state` bool indicating if it should be switched on (`true`) or off (`false`) |
@@ -97,7 +97,10 @@ This list indicates the available functions
 
 ## Timers (`simple` only)
 
-Current timer support is limited to `simple` timers on `Outputs.HEATER` (`line=OUTH`).
+Current timer support is limited to `simple` timers on:
+
+- `Outputs.HEATER` (`line=OUTH`)
+- `Outputs.VENTILATION` (`line=OUTV`)
 
 Important behavior:
 

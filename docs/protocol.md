@@ -129,7 +129,8 @@ Notes:
 - Endpoint is called with `POST`.
 - Observed request header: `X-Requested-With: XMLHttpRequest`
 - Current verified implementation scope is `simple` timers only.
-- Captures currently verify `line="OUTH"` only.
+- Captures verify `line="OUTH"`.
+- Live API test on 2026-03-07 also verified `line="OUTV"` (`save_timers` accepted a full timer-list roundtrip).
 - Request sends the full timer array each time (not partial updates).
 - `location` is optional for `simple` timers (confirmed by live API test on 2026-03-07).
 

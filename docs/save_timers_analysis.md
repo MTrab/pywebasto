@@ -37,6 +37,7 @@ All observed requests send JSON with this top-level structure:
 Observations:
 
 - `line` is `"OUTH"` in all captures.
+- Live API test on 2026-03-07 also accepted `line="OUTV"` with a full timer-list roundtrip.
 - `timers` is a complete list of timers in the current state.
 - Create/edit/delete operations resend the full list, not a partial delta.
 

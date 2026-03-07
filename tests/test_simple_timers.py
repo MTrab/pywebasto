@@ -149,6 +149,28 @@ class TestTimerExtraction(unittest.TestCase):
         self.assertIsNone(timers[0].latitude)
         self.assertIsNone(timers[0].longitude)
 
+    def test_extract_for_outv_line(self) -> None:
+        payload = {
+            "outputs": [
+                {
+                    "line": "OUTV",
+                    "timers": [
+                        {
+                            "type": "simple",
+                            "start": 900,
+                            "duration": 3600,
+                            "repeat": 16,
+                            "enabled": False,
+                        }
+                    ],
+                }
+            ]
+        }
+
+        timers = WebastoConnect._extract_simple_timers_from_data(payload, "OUTV")
+        self.assertEqual(len(timers), 1)
+        self.assertEqual(timers[0].start, 900)
+
 
 if __name__ == "__main__":
     unittest.main()
