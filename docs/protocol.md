@@ -45,7 +45,7 @@ Cookie behavior in client:
 All paths are relative to `/webapi`.
 
 | Enum | Path | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `LOGIN` | `/login` | Authenticate with username/password |
 | `COMMAND` | `/command` | Send output ON/OFF command |
 | `GET_DATA` | `/get_service_data?poll=true` | Fetch service data with poll |
