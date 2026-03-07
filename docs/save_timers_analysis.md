@@ -42,7 +42,7 @@ Observations:
 
 ## Timer types and fields
 
-## `simple` timer (observed)
+### `simple` timer (observed)
 
 ```json
 {
@@ -64,7 +64,7 @@ Observed fields:
 - `location.lat` (string), `location.lon` (string)
 - `enabled` (bool) appears in create/enable/disable/delete
 
-## `smart` timer (observed)
+### `smart` timer (observed)
 
 ```json
 {
