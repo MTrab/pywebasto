@@ -21,7 +21,7 @@ from .consts import (
     CMD_VENTILATION_ON,
 )
 from .enums import Outputs, Request
-from .exceptions import InvalidRequestException, UnauthorizedException
+from .exceptions import ForbiddenException, InvalidRequestException, InvalidResponseException, UnauthorizedException
 
 if sys.version_info < (3, 11, 0):
     sys.exit("The pyWorxcloud module requires Python 3.11.0 or later")
@@ -36,7 +36,6 @@ class WebastoConnect:
         self._pwd: str = password
         self._hssess: str | None = None
         self._hssess_webclient: str | None = None
-        self._authorized: bool = False
         self._data: dict | None = None
 
         self.devices: dict[int, WebastoDevice] = {}
@@ -44,10 +43,10 @@ class WebastoConnect:
     async def connect(self) -> None:
         """Connect to the API."""
         await self._call(Request.LOGIN, {"username": self._usn, "password": self._pwd})
-        if self._authorized:
-            await self.update()
-        else:
-            raise UnauthorizedException("Username or password incorrect")
+        if self._hssess is None and self._hssess_webclient is None:
+            raise InvalidResponseException("Login failed, no session cookie received")
+        
+        await self.update()
 
     def assemble_headers(self) -> dict:
         """Generate headers."""
@@ -69,6 +68,17 @@ class WebastoConnect:
 
         return _headers
 
+    def _handle_cookies(self, response: aiohttp.ClientResponse) -> None:
+        """Handle cookies from the response."""
+        hssess_cookie = response.cookies.get("hssess")
+        if hssess_cookie is not None:
+            self._hssess = hssess_cookie.value
+
+        hssess_webclient_cookie = response.cookies.get("hssess-webclient")
+        if hssess_webclient_cookie is not None:
+            self._hssess_webclient = hssess_webclient_cookie.value
+
+
     async def _call(
         self, api_type: Request, payload: dict | str | None = None
     ) -> dict | None:
@@ -86,38 +96,18 @@ class WebastoConnect:
                 data=payload,
             ) as response:
 
-                # Gem cookies hvis de ikke allerede er sat
-                if self._hssess is None and self._hssess_webclient is None:
-                    self._hssess = (
-                        response.cookies.get("hssess").value
-                        if "hssess" in response.cookies
-                        else None
-                    )
-                    self._hssess_webclient = (
-                        response.cookies.get("hssess-webclient").value
-                        if "hssess-webclient" in response.cookies
-                        else None
-                    )
+                self._handle_cookies(response)
 
                 if response.status != 200:
                     if response.status == 401:
                         raise UnauthorizedException("Username or password incorrect")
-
                     elif response.status == 403:
-                        # async pendant til threading.Timer
-                        async def retry():
-                            await asyncio.sleep(30)
-                            await self._call(api_type, payload)
-
-                        asyncio.create_task(retry())
-
+                        raise ForbiddenException("Access to the requested resource is forbidden")
                     else:
                         text = await response.text()
                         raise InvalidRequestException(
                             f"API reported {response.status}: {text}"
                         )
-                else:
-                    self._authorized = True
 
                 if "GET" in api_type.name:
                     return await response.json(content_type=None)
