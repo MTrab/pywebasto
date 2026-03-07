@@ -51,6 +51,7 @@ All paths are relative to `/webapi`.
 | `GET_DATA` | `/get_service_data?poll=true` | Fetch service data with poll |
 | `GET_DATA_NOPOLL` | `/get_service_data?poll=false` | Fetch service data without poll |
 | `POST_SETTING` | `/post_settings` | Update settings |
+| `SAVE_TIMERS` | `/save_timers` | Save full timer list for a line |
 | `GET_SETTINGS` | `/get_settings` | Read settings |
 | `CHANGE_DEVICE` | `/change_device` | Switch active device context |
 
@@ -112,6 +113,26 @@ Observed variants:
 4. Temperature compensation:
    - `device_settings.ext_temp_comp`
 
+## Save Timers (`/save_timers`)
+
+Observed request shape (from sanitized captures in `docs/dumps/`):
+
+```json
+{
+  "line": "OUTH",
+  "timers": []
+}
+```
+
+Notes:
+
+- Endpoint is called with `POST`.
+- Observed request header: `X-Requested-With: XMLHttpRequest`
+- Current verified implementation scope is `simple` timers only.
+- Captures currently verify `line="OUTH"` only.
+- Request sends the full timer array each time (not partial updates).
+- `location` is optional for `simple` timers (confirmed by live API test on 2026-03-07).
+
 ## Response Handling in Client
 
 - Client expects JSON only for endpoints where enum name contains `GET`:
@@ -157,6 +178,10 @@ Fields consumed by `WebastoDevice.last_data`:
   - `icon` used for icon properties
   - `name` used for output name properties
   - `ontime` used for main output end-time calculations
+  - `timers` used for timer extraction (`simple` timers in current scope)
+- `disabled_outputs` (array)
+  - `line` used for output identity
+  - `timers` used for timer extraction when output is disabled
 
 ## Parsed Fields from `GET_DATA_NOPOLL`
 

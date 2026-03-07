@@ -10,6 +10,7 @@ class Request(Enum):
     GET_DATA = "/get_service_data?poll=true"
     GET_DATA_NOPOLL = "/get_service_data?poll=false"
     POST_SETTING = "/post_settings"
+    SAVE_TIMERS = "/save_timers"
     GET_SETTINGS = "/get_settings"
     CHANGE_DEVICE = "/change_device"
 

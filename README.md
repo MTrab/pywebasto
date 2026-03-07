@@ -73,6 +73,8 @@ Function | Description | Params
 -|-|-
 connect | Function used to connect to the API |
 update | Fetch latest data from the API | `device_id` if set, only update this device
+get_timers | Read `simple` timers for a given output line from API data | `device` send command to this device of WebastoDevice class<br/>`line` _optional_ Outputs ENUM, default: `Outputs.HEATER`
+save_timers | Save a full list of `simple` timers via `/save_timers` | `device` send command to this device of WebastoDevice class<br/>`timers` list of `SimpleTimer` objects<br/>`line` _optional_ Outputs ENUM, currently only `Outputs.HEATER` is supported
 set_output_main | Set current state of main output | `device` send command to this device of WebastoDevice class<br/>`state` bool indicating if it should be switched on (`true`) or off (`false`)
 set_output_aux1 | Set current state of AUX1 output | `device` send command to this device of WebastoDevice class<br/>`state` bool indicating if it should be switched on (`true`) or off (`false`)
 set_output_aux2 | Set current state of AUX2 output | `device` send command to this device of WebastoDevice class<br/>`state` bool indicating if it should be switched on (`true`) or off (`false`)
@@ -81,6 +83,102 @@ set_main_timeout | Set the timeout for auto off for the main output |`device` se
 set_aux_timeout | Set the timeout for auto off for an AUX output | `device` send command to this device of WebastoDevice class<br/>`timeout` int indicating timeout in seconds<br/>`aux` _optional_ Outputs ENUM indicating AUX to be changed, default: `Outputs.AUX1`
 set_low_voltage_cutoff | Sets the minimum voltage before shutting off the device | `device` send command to this device of WebastoDevice class<br/>`value` minimum voltage as float
 set_temperature_compensation | Set the temperature compensatioon for the device | `device` send command to this device of WebastoDevice class<br/>`value` temperature compensation as float
+
+## Timers (`simple` only)
+
+Current timer support is limited to `simple` timers on `Outputs.HEATER` (`line=OUTH`).
+
+Important behavior:
+
+- `save_timers(...)` sends the full timer list for the line.
+- To edit one timer, read all timers, modify one entry, and save the full list.
+- To delete one timer, read all timers, remove one entry, and save the remaining list.
+
+### Weekday bitmask (`repeat`)
+
+Confirmed mapping:
+
+- Monday = `64`
+- Tuesday = `1`
+- Wednesday = `2`
+- Thursday = `4`
+- Friday = `8`
+- Saturday = `16`
+- Sunday = `32`
+
+Examples:
+
+- `repeat=31` means Tuesday-Saturday (`1+2+4+8+16`)
+- `repeat=72` means Monday+Friday (`64+8`)
+
+### Read timers
+
+```python
+from pywebasto import WebastoConnect
+
+timers = await webasto.get_timers(device)
+for timer in timers:
+    print(timer)
+```
+
+### Create one timer
+
+```python
+from pywebasto import SimpleTimer
+
+timers = await webasto.get_timers(device)
+
+new_timer = SimpleTimer(
+    start=830,          # minutes after midnight (UTC)
+    duration=5400,      # seconds
+    repeat=31,          # weekday bitmask
+    enabled=True,
+    # location is optional
+    # latitude="56.461846",
+    # longitude="10.866533",
+)
+
+await webasto.save_timers(device, timers + [new_timer])
+```
+
+### Edit an existing timer
+
+```python
+from pywebasto import SimpleTimer
+
+timers = await webasto.get_timers(device)
+
+# Example: replace first timer with updated start/duration/repeat
+timers[0] = SimpleTimer(
+    start=900,
+    duration=3600,
+    repeat=31,
+    enabled=True,
+)
+
+await webasto.save_timers(device, timers)
+```
+
+### Delete a timer
+
+```python
+timers = await webasto.get_timers(device)
+
+# Example: remove first timer
+updated = timers[1:]
+await webasto.save_timers(device, updated)
+```
+
+### Multiple timers
+
+```python
+from pywebasto import SimpleTimer
+
+timer_a = SimpleTimer(start=830, duration=5400, repeat=31, enabled=True)
+timer_b = SimpleTimer(start=1221, duration=4200, repeat=16, enabled=True)
+
+await webasto.save_timers(device, [timer_a, timer_b])
+```
 
 # My heater doesn't show up
 

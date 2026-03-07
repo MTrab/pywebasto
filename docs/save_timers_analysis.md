@@ -136,7 +136,8 @@ Examples:
 
 ## Field requirements
 
-- For `simple` timers in current scope, no fields are treated as optional.
+- For `simple` timers in current scope, `location` is optional.
+- Observed on 2026-03-07: API accepted a `simple` timer payload without `location` and returned it without `location`.
 - `enabled` must always be explicitly set to either `true` (enabled) or `false` (disabled).
 
 ## Duration semantics
