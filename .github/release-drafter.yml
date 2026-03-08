@@ -63,3 +63,4 @@ autolabeler:
       - '/bug\/.+/'
       - '/feature\/.+/'
       - '/enhancement\/.+/'
+      - '/chore\/.+/'
