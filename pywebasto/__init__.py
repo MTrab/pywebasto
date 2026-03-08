@@ -28,7 +28,7 @@ from .exceptions import (
 from .timer import SimpleTimer
 
 if sys.version_info < (3, 11, 0):
-    sys.exit("The pyWorxcloud module requires Python 3.11.0 or later")
+    sys.exit("The pywebasto module requires Python 3.11.0 or later")
 
 __all__ = ["WebastoConnect", "SimpleTimer"]
 
