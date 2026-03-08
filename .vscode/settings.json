@@ -1,5 +1,6 @@
 {
     "python.envFile": "${workspaceFolder}/.env",
+    "cSpell.enabled": false,
     "files.eol": "\n",
     "editor.tabSize": 4,
     "python.analysis.autoSearchPaths": false,

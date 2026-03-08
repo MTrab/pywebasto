@@ -105,7 +105,7 @@ Prefer concise, evidence-based notes over broad speculation.
 
 Branch naming convention:
 
-```
+```text
 feature/<name>
 fix/<name>
 refactor/<name>

@@ -20,10 +20,13 @@ from .consts import (
     CMD_VENTILATION_ON,
 )
 from .enums import Outputs, Request
-from .exceptions import InvalidRequestException, UnauthorizedException
+from .exceptions import ForbiddenException, InvalidRequestException, InvalidResponseException, UnauthorizedException
+from .timer import SimpleTimer
 
 if sys.version_info < (3, 11, 0):
     sys.exit("The pyWorxcloud module requires Python 3.11.0 or later")
+
+__all__ = ["WebastoConnect", "SimpleTimer"]
 
 
 class WebastoConnect:
@@ -35,7 +38,6 @@ class WebastoConnect:
         self._pwd: str = password
         self._hssess: str | None = None
         self._hssess_webclient: str | None = None
-        self._authorized: bool = False
         self._data: dict | None = None
 
         self.devices: dict[int, WebastoDevice] = {}
@@ -43,10 +45,10 @@ class WebastoConnect:
     async def connect(self) -> None:
         """Connect to the API."""
         await self._call(Request.LOGIN, {"username": self._usn, "password": self._pwd})
-        if self._authorized:
-            await self.update()
-        else:
-            raise UnauthorizedException("Username or password incorrect")
+        if self._hssess is None and self._hssess_webclient is None:
+            raise InvalidResponseException("Login failed, no session cookie received")
+        
+        await self.update()
 
     def assemble_headers(self) -> dict:
         """Generate headers."""
@@ -68,8 +70,22 @@ class WebastoConnect:
 
         return _headers
 
+    def _handle_cookies(self, response: aiohttp.ClientResponse) -> None:
+        """Handle cookies from the response."""
+        hssess_cookie = response.cookies.get("hssess")
+        if hssess_cookie is not None:
+            self._hssess = hssess_cookie.value
+
+        hssess_webclient_cookie = response.cookies.get("hssess-webclient")
+        if hssess_webclient_cookie is not None:
+            self._hssess_webclient = hssess_webclient_cookie.value
+
+
     async def _call(
-        self, api_type: Request, payload: dict | str | None = None
+        self,
+        api_type: Request,
+        payload: dict | str | None = None,
+        extra_headers: dict | None = None,
     ) -> dict | None:
         """Make an API request."""
 
@@ -78,44 +94,28 @@ class WebastoConnect:
 
         timeout = aiohttp.ClientTimeout(total=60)
 
+        headers = self.assemble_headers()
+        if isinstance(extra_headers, dict):
+            headers.update(extra_headers)
+
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(
                 f"{API_URL}{api_type.value}",
-                headers=self.assemble_headers(),
+                headers=headers,
                 data=payload,
             ) as response:
-                # Gem cookies hvis de ikke allerede er sat
-                if self._hssess is None and self._hssess_webclient is None:
-                    self._hssess = (
-                        response.cookies.get("hssess").value
-                        if "hssess" in response.cookies
-                        else None
-                    )
-                    self._hssess_webclient = (
-                        response.cookies.get("hssess-webclient").value
-                        if "hssess-webclient" in response.cookies
-                        else None
-                    )
+                self._handle_cookies(response)
 
                 if response.status != 200:
                     if response.status == 401:
                         raise UnauthorizedException("Username or password incorrect")
-
                     elif response.status == 403:
-                        # async pendant til threading.Timer
-                        async def retry():
-                            await asyncio.sleep(30)
-                            await self._call(api_type, payload)
-
-                        asyncio.create_task(retry())
-
+                        raise ForbiddenException("Access to the requested resource is forbidden")
                     else:
                         text = await response.text()
                         raise InvalidRequestException(
                             f"API reported {response.status}: {text}"
                         )
-                else:
-                    self._authorized = True
 
                 if "GET" in api_type.name:
                     return await response.json(content_type=None)
@@ -160,6 +160,92 @@ class WebastoConnect:
             device_list.append({"id": device[0], "name": device[1]})
 
         return device_list
+
+    @staticmethod
+    def _extract_simple_timers_from_data(data: dict | None, line: str) -> list[SimpleTimer]:
+        """Extract simple timers for a specific output line from API data."""
+        if not isinstance(data, dict):
+            return []
+
+        timers: list[SimpleTimer] = []
+        for section in ("outputs", "disabled_outputs"):
+            outputs = data.get(section)
+            if not isinstance(outputs, list):
+                continue
+
+            for output in outputs:
+                if not isinstance(output, dict):
+                    continue
+                if output.get("line") != line:
+                    continue
+
+                output_timers = output.get("timers")
+                if not isinstance(output_timers, list):
+                    continue
+
+                for timer_data in output_timers:
+                    if not isinstance(timer_data, dict):
+                        continue
+                    if timer_data.get("type") != "simple":
+                        continue
+
+                    try:
+                        timers.append(SimpleTimer.from_api_dict(timer_data))
+                    except (KeyError, TypeError, ValueError) as err:
+                        raise InvalidRequestException(
+                            f"Invalid simple timer data in response: {err}"
+                        ) from err
+
+        return timers
+
+    async def get_timers(
+        self, device: WebastoDevice, line: Outputs = Outputs.HEATER
+    ) -> list[SimpleTimer]:
+        """Get simple timers for an output line from the latest API data."""
+        await self._change_device(device_id=device.device_id)
+        data = await self._call(Request.GET_DATA_NOPOLL)
+        return self._extract_simple_timers_from_data(data, line.value)
+
+    async def save_timers(
+        self,
+        device: WebastoDevice,
+        timers: list[SimpleTimer],
+        line: Outputs = Outputs.HEATER,
+    ) -> None:
+        """Save a full simple-timer list using the observed `save_timers` contract."""
+        if line not in (Outputs.HEATER, Outputs.VENTILATION):
+            raise InvalidRequestException(
+                "save_timers is only verified for line='OUTH' (Outputs.HEATER) "
+                "and line='OUTV' (Outputs.VENTILATION)"
+            )
+
+        await self._change_device(device_id=device.device_id)
+
+        payload = {
+            "line": line.value,
+            "timers": [timer.to_api_dict() for timer in timers],
+        }
+        await self._call(
+            Request.SAVE_TIMERS,
+            json.dumps(payload),
+            extra_headers={"X-Requested-With": "XMLHttpRequest"},
+        )
+        await self.update(device_id=device.device_id)
+
+    async def get_simple_timers(
+        self, device: WebastoDevice, line: Outputs = Outputs.HEATER
+    ) -> list[SimpleTimer]:
+        """Backward-compatible alias for `get_timers`."""
+        return await self.get_timers(device=device, line=line)
+
+    async def save_simple_timers(
+        self,
+        device: WebastoDevice,
+        timers: list[SimpleTimer],
+        line: Outputs = Outputs.HEATER,
+    ) -> None:
+        """Backward-compatible alias for `save_timers`."""
+        await self.save_timers(device=device, timers=timers, line=line)
 
     async def set_output_main(self, device: WebastoDevice, state: bool) -> None:
         """Turn on or off the heater or ventilation."""
