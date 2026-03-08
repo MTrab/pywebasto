@@ -1,4 +1,5 @@
 """Enum classes."""
+
 from enum import Enum
 
 
