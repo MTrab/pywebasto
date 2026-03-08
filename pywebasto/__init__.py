@@ -1,6 +1,5 @@
 """Module for interfacing with Webasto Connect."""
 
-import asyncio
 import json
 import sys
 
