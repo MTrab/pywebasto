@@ -1,6 +1,5 @@
 """Update the version stamp in pyproject.toml."""
 
-from operator import index
 import os
 import sys
 import re

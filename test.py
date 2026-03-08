@@ -4,7 +4,6 @@ from os import environ
 import asyncio
 
 from pywebasto import WebastoConnect
-from pywebasto.enums import Outputs
 
 
 async def main():

@@ -3,7 +3,6 @@
 import asyncio
 import json
 import sys
-import threading
 
 import aiohttp
 
@@ -85,7 +84,6 @@ class WebastoConnect:
                 headers=self.assemble_headers(),
                 data=payload,
             ) as response:
-
                 # Gem cookies hvis de ikke allerede er sat
                 if self._hssess is None and self._hssess_webclient is None:
                     self._hssess = (
