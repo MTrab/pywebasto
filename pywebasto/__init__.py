@@ -3,7 +3,6 @@
 import asyncio
 import json
 import sys
-import threading
 
 import aiohttp
 
@@ -22,9 +21,12 @@ from .consts import (
 )
 from .enums import Outputs, Request
 from .exceptions import ForbiddenException, InvalidRequestException, InvalidResponseException, UnauthorizedException
+from .timer import SimpleTimer
 
 if sys.version_info < (3, 11, 0):
     sys.exit("The pyWorxcloud module requires Python 3.11.0 or later")
+
+__all__ = ["WebastoConnect", "SimpleTimer"]
 
 
 class WebastoConnect:
@@ -80,7 +82,10 @@ class WebastoConnect:
 
 
     async def _call(
-        self, api_type: Request, payload: dict | str | None = None
+        self,
+        api_type: Request,
+        payload: dict | str | None = None,
+        extra_headers: dict | None = None,
     ) -> dict | None:
         """Make an API request."""
 
@@ -89,10 +94,14 @@ class WebastoConnect:
 
         timeout = aiohttp.ClientTimeout(total=60)
 
+        headers = self.assemble_headers()
+        if isinstance(extra_headers, dict):
+            headers.update(extra_headers)
+
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(
                 f"{API_URL}{api_type.value}",
-                headers=self.assemble_headers(),
+                headers=headers,
                 data=payload,
             ) as response:
 
@@ -152,6 +161,92 @@ class WebastoConnect:
             device_list.append({"id": device[0], "name": device[1]})
 
         return device_list
+
+    @staticmethod
+    def _extract_simple_timers_from_data(data: dict | None, line: str) -> list[SimpleTimer]:
+        """Extract simple timers for a specific output line from API data."""
+        if not isinstance(data, dict):
+            return []
+
+        timers: list[SimpleTimer] = []
+        for section in ("outputs", "disabled_outputs"):
+            outputs = data.get(section)
+            if not isinstance(outputs, list):
+                continue
+
+            for output in outputs:
+                if not isinstance(output, dict):
+                    continue
+                if output.get("line") != line:
+                    continue
+
+                output_timers = output.get("timers")
+                if not isinstance(output_timers, list):
+                    continue
+
+                for timer_data in output_timers:
+                    if not isinstance(timer_data, dict):
+                        continue
+                    if timer_data.get("type") != "simple":
+                        continue
+
+                    try:
+                        timers.append(SimpleTimer.from_api_dict(timer_data))
+                    except (KeyError, TypeError, ValueError) as err:
+                        raise InvalidRequestException(
+                            f"Invalid simple timer data in response: {err}"
+                        ) from err
+
+        return timers
+
+    async def get_timers(
+        self, device: WebastoDevice, line: Outputs = Outputs.HEATER
+    ) -> list[SimpleTimer]:
+        """Get simple timers for an output line from the latest API data."""
+        await self._change_device(device_id=device.device_id)
+        data = await self._call(Request.GET_DATA_NOPOLL)
+        return self._extract_simple_timers_from_data(data, line.value)
+
+    async def save_timers(
+        self,
+        device: WebastoDevice,
+        timers: list[SimpleTimer],
+        line: Outputs = Outputs.HEATER,
+    ) -> None:
+        """Save a full simple-timer list using the observed `save_timers` contract."""
+        if line not in (Outputs.HEATER, Outputs.VENTILATION):
+            raise InvalidRequestException(
+                "save_timers is only verified for line='OUTH' (Outputs.HEATER) "
+                "and line='OUTV' (Outputs.VENTILATION)"
+            )
+
+        await self._change_device(device_id=device.device_id)
+
+        payload = {
+            "line": line.value,
+            "timers": [timer.to_api_dict() for timer in timers],
+        }
+        await self._call(
+            Request.SAVE_TIMERS,
+            json.dumps(payload),
+            extra_headers={"X-Requested-With": "XMLHttpRequest"},
+        )
+        await self.update(device_id=device.device_id)
+
+    async def get_simple_timers(
+        self, device: WebastoDevice, line: Outputs = Outputs.HEATER
+    ) -> list[SimpleTimer]:
+        """Backward-compatible alias for `get_timers`."""
+        return await self.get_timers(device=device, line=line)
+
+    async def save_simple_timers(
+        self,
+        device: WebastoDevice,
+        timers: list[SimpleTimer],
+        line: Outputs = Outputs.HEATER,
+    ) -> None:
+        """Backward-compatible alias for `save_timers`."""
+        await self.save_timers(device=device, timers=timers, line=line)
 
     async def set_output_main(self, device: WebastoDevice, state: bool) -> None:
         """Turn on or off the heater or ventilation."""

@@ -83,6 +83,27 @@ async def main():
         # Set timeout for aux2
         # webasto.set_aux_timeout(device, 2400, Outputs.AUX2)
 
+        # Read simple timers for the main output line (OUTH)
+        # timers = await webasto.get_timers(device)
+        # for timer in timers:
+        #     print(timer)
+
+        # Save full timer list for OUTH (replace current list)
+        # await webasto.save_timers(
+        #     device,
+        #     [
+        #         # from pywebasto import SimpleTimer
+        #         SimpleTimer(
+        #             start=830,
+        #             duration=5400,
+        #             repeat=31,
+        #             latitude="REPLACE_LAT",
+        #             longitude="REPLACE_LON",
+        #             enabled=True,
+        #         )
+        #     ],
+        # )
+
         # Update data
         # webasto.update()
         print("-----")
