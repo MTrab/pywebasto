@@ -19,7 +19,12 @@ from .consts import (
     CMD_VENTILATION_ON,
 )
 from .enums import Outputs, Request
-from .exceptions import ForbiddenException, InvalidRequestException, InvalidResponseException, UnauthorizedException
+from .exceptions import (
+    ForbiddenException,
+    InvalidRequestException,
+    InvalidResponseException,
+    UnauthorizedException,
+)
 from .timer import SimpleTimer
 
 if sys.version_info < (3, 11, 0):
@@ -46,7 +51,7 @@ class WebastoConnect:
         await self._call(Request.LOGIN, {"username": self._usn, "password": self._pwd})
         if self._hssess is None and self._hssess_webclient is None:
             raise InvalidResponseException("Login failed, no session cookie received")
-        
+
         await self.update()
 
     def assemble_headers(self) -> dict:
@@ -79,7 +84,6 @@ class WebastoConnect:
         if hssess_webclient_cookie is not None:
             self._hssess_webclient = hssess_webclient_cookie.value
 
-
     async def _call(
         self,
         api_type: Request,
@@ -109,7 +113,9 @@ class WebastoConnect:
                     if response.status == 401:
                         raise UnauthorizedException("Username or password incorrect")
                     elif response.status == 403:
-                        raise ForbiddenException("Access to the requested resource is forbidden")
+                        raise ForbiddenException(
+                            "Access to the requested resource is forbidden"
+                        )
                     else:
                         text = await response.text()
                         raise InvalidRequestException(
@@ -161,7 +167,9 @@ class WebastoConnect:
         return device_list
 
     @staticmethod
-    def _extract_simple_timers_from_data(data: dict | None, line: str) -> list[SimpleTimer]:
+    def _extract_simple_timers_from_data(
+        data: dict | None, line: str
+    ) -> list[SimpleTimer]:
         """Extract simple timers for a specific output line from API data."""
         if not isinstance(data, dict):
             return []
