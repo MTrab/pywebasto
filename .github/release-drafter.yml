@@ -54,6 +54,9 @@ autolabeler:
   - label: "enhancement"
     branch:
       - '/enhancement\/.+/'
+  - label: "chore"
+    branch:
+      - '/chore\/.+/'
   - label: "patch"
     branch:
       - '/fix\/.+/'
