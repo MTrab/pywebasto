@@ -26,6 +26,7 @@ class WebastoDevice:
         self.__low_voltage_cutoff: float = 0.0
         self.__temperature_compensation: float = 0.0
         self.__subscription_expiration: datetime | None = None
+        self.__connection_lost: bool | None = None
         self.__last_data: dict | None = {}
         self.__dev_data: dict | None = {}
         self.__settings: dict | None = {}
@@ -121,6 +122,9 @@ class WebastoDevice:
             self.__last_data["voltage"][: len(self.__last_data["voltage"]) - 1]
         )
         self.__location = self.__last_data["location"]
+        connection_lost = self.__last_data.get("connection_lost")
+        if isinstance(connection_lost, bool):
+            self.__connection_lost = connection_lost
 
         for output in self.__last_data["outputs"]:
             if output["line"] == "OUTH" or output["line"] == "OUTV":
@@ -153,6 +157,9 @@ class WebastoDevice:
         self.__subscription_expiration = datetime.fromtimestamp(
             value["subscription"]["expiration"]
         )
+        connection_lost = value.get("connection_lost")
+        if isinstance(connection_lost, bool):
+            self.__connection_lost = connection_lost
 
     @property
     def settings(self) -> dict | None:
@@ -314,6 +321,19 @@ class WebastoDevice:
     def subscription_expiration(self) -> datetime:
         """Get subscription expiration."""
         return self.__subscription_expiration
+
+    @property
+    def connection_lost(self) -> bool | None:
+        """Get the raw cloud connection state from API data."""
+        return self.__connection_lost
+
+    @property
+    def is_connected(self) -> bool | None:
+        """Get whether the device currently appears connected to cloud."""
+        if self.__connection_lost is None:
+            return None
+
+        return not self.__connection_lost
 
     def __get_value(self, group: str, key: str) -> Any:
         """Get a value from the settings dict."""

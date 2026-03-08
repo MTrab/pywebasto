@@ -44,7 +44,6 @@ Observed behavior in the Webasto web interface (`my.webastoconnect.com`):
 ## Available properties
 
 This list indicates the available properties for a heater
-
 | Property | Description | Type | Example |
 | --- | --- | --- | --- |
 | timeout_heat | Heat mode timeout in seconds | int | |
@@ -75,6 +74,8 @@ This list indicates the available properties for a heater
 | output_aux1_name | Name of AUX1 output channel | str | `Output 1` |
 | output_aux2_name | Name of AUX2 output channel | str | `Output 2` |
 | subscription_expiration | When the current subscription will expire | datetime | `datetime.datetime(2025, 12, 21, 16, 6, 28, 254801)` |
+| connection_lost | Raw cloud link state from API (`true` means cloud connection lost) | bool | `False` |
+| is_connected | Derived cloud link state (`not connection_lost`) | bool | `True` |
 
 ## Functions
 
