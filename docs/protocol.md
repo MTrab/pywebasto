@@ -151,6 +151,7 @@ Fields consumed by `WebastoDevice.last_data`:
 - `temperature` (string ending in `C` or `F`, parsed to int value + unit)
 - `voltage` (string, trailing unit removed, parsed to float)
 - `location` (dict with at least `state`; if `state != "ON"` location is treated as disabled)
+- `connection_lost` (bool; observed `false` online, `true` when device is offline from cloud)
 - `outputs` (array)
   - `line` values used: `OUTH`, `OUTV`, `OUT1`, `OUT2`
   - `state` used for boolean output state
@@ -163,6 +164,7 @@ Fields consumed by `WebastoDevice.last_data`:
 Fields consumed by `WebastoDevice.dev_data`:
 
 - `subscription.expiration` (Unix timestamp converted to `datetime`)
+- `connection_lost` (bool; used as cloud connectivity indicator)
 
 ## Parsed Fields from `GET_SETTINGS`
 

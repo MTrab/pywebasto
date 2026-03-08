@@ -61,6 +61,8 @@ output_main_name | Name of the main output channel | str | `Primary`
 output_aux1_name | Name of AUX1 output channel | str | `Output 1`
 output_aux2_name | Name of AUX2 output channel | str | `Output 2`
 subscription_expiration | When the current subscription will expire | datetime | `datetime.datetime(2025, 12, 21, 16, 6, 28, 254801)`
+connection_lost | Raw cloud link state from API (`true` means cloud connection lost) | bool | `False`
+is_connected | Derived cloud link state (`not connection_lost`) | bool | `True`
 
 ## Functions
 This list indicates the available functions
