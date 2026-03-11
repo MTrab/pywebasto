@@ -1,7 +1,10 @@
 """Module for interfacing with Webasto Connect."""
 
+import asyncio
 import json
+import logging
 import sys
+from time import monotonic
 
 import aiohttp
 
@@ -32,6 +35,18 @@ if sys.version_info < (3, 11, 0):
 
 __all__ = ["WebastoConnect", "SimpleTimer"]
 
+LOGGER = logging.getLogger(__name__)
+REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=60, connect=10, sock_read=45)
+MAX_READ_RETRIES = 2
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+RETRYABLE_REQUESTS = {
+    Request.LOGIN,
+    Request.GET_DATA,
+    Request.GET_DATA_NOPOLL,
+    Request.GET_SETTINGS,
+    Request.CHANGE_DEVICE,
+}
+
 
 class WebastoConnect:
     """Webasto Connect implementation."""
@@ -43,6 +58,7 @@ class WebastoConnect:
         self._hssess: str | None = None
         self._hssess_webclient: str | None = None
         self._data: dict | None = None
+        self._session: aiohttp.ClientSession | None = None
 
         self.devices: dict[int, WebastoDevice] = {}
 
@@ -84,6 +100,35 @@ class WebastoConnect:
         if hssess_webclient_cookie is not None:
             self._hssess_webclient = hssess_webclient_cookie.value
 
+    async def _get_session(self) -> aiohttp.ClientSession:
+        """Create or reuse an HTTP session."""
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(timeout=REQUEST_TIMEOUT)
+        return self._session
+
+    @staticmethod
+    def _is_retryable_request(api_type: Request) -> bool:
+        """Return whether a request is safe to retry."""
+        return api_type in RETRYABLE_REQUESTS
+
+    @staticmethod
+    def _backoff_seconds(attempt: int) -> float:
+        """Return exponential backoff delay in seconds."""
+        return float(2**attempt)
+
+    async def close(self) -> None:
+        """Close any open HTTP session."""
+        if self._session is not None and not self._session.closed:
+            await self._session.close()
+
+    async def __aenter__(self) -> "WebastoConnect":
+        """Allow async context manager usage."""
+        return self
+
+    async def __aexit__(self, *_: object) -> None:
+        """Close resources when leaving async context."""
+        await self.close()
+
     async def _call(
         self,
         api_type: Request,
@@ -95,35 +140,93 @@ class WebastoConnect:
         if isinstance(payload, type(None)):
             payload = {}
 
-        timeout = aiohttp.ClientTimeout(total=60)
-
         headers = self.assemble_headers()
         if isinstance(extra_headers, dict):
             headers.update(extra_headers)
 
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.post(
-                f"{API_URL}{api_type.value}",
-                headers=headers,
-                data=payload,
-            ) as response:
-                self._handle_cookies(response)
+        max_attempts = (
+            MAX_READ_RETRIES + 1 if self._is_retryable_request(api_type) else 1
+        )
 
-                if response.status != 200:
-                    if response.status == 401:
-                        raise UnauthorizedException("Username or password incorrect")
-                    elif response.status == 403:
-                        raise ForbiddenException(
-                            "Access to the requested resource is forbidden"
-                        )
-                    else:
+        for attempt in range(max_attempts):
+            session = await self._get_session()
+            try:
+                start = monotonic()
+                async with session.post(
+                    f"{API_URL}{api_type.value}",
+                    headers=headers,
+                    data=payload,
+                ) as response:
+                    self._handle_cookies(response)
+                    elapsed = monotonic() - start
+                    LOGGER.debug(
+                        "Request %s completed in %.3f seconds with status %s",
+                        api_type.name,
+                        elapsed,
+                        response.status,
+                    )
+
+                    if response.status != 200:
+                        if response.status == 401:
+                            raise UnauthorizedException(
+                                "Username or password incorrect"
+                            )
+                        if response.status == 403:
+                            raise ForbiddenException(
+                                "Access to the requested resource is forbidden"
+                            )
+                        if (
+                            response.status in RETRYABLE_STATUS_CODES
+                            and attempt < max_attempts - 1
+                        ):
+                            delay = self._backoff_seconds(attempt)
+                            LOGGER.debug(
+                                "Retrying %s after HTTP %s in %.1f seconds (attempt %s/%s)",
+                                api_type.name,
+                                response.status,
+                                delay,
+                                attempt + 1,
+                                max_attempts,
+                            )
+                            await asyncio.sleep(delay)
+                            continue
+
                         text = await response.text()
                         raise InvalidRequestException(
                             f"API reported {response.status}: {text}"
                         )
 
-                if "GET" in api_type.name:
-                    return await response.json(content_type=None)
+                    if "GET" in api_type.name:
+                        try:
+                            return await response.json(content_type=None)
+                        except (aiohttp.ContentTypeError, json.JSONDecodeError) as err:
+                            text = await response.text()
+                            raise InvalidResponseException(
+                                f"Invalid JSON response for {api_type.name}: {text}"
+                            ) from err
+
+                    return None
+            except (
+                aiohttp.ClientConnectionError,
+                aiohttp.ClientOSError,
+                aiohttp.ServerTimeoutError,
+                asyncio.TimeoutError,
+            ) as err:
+                if attempt < max_attempts - 1:
+                    delay = self._backoff_seconds(attempt)
+                    LOGGER.debug(
+                        "Retrying %s after network error in %.1f seconds (attempt %s/%s): %s",
+                        api_type.name,
+                        delay,
+                        attempt + 1,
+                        max_attempts,
+                        err.__class__.__name__,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+                raise InvalidRequestException(f"API request failed: {err}") from err
+
+        raise InvalidRequestException("API request failed after retries")
 
     async def update(self, device_id: str | None = None) -> None:
         """Get current data from Webasto API."""

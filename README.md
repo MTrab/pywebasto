@@ -22,18 +22,31 @@ Run this command to install the latest release from the PyPI repository:<br/>
 The following example shows how to get the current temperature measurement from your connected device(s):<br/>
 
 ```python
+import asyncio
+
 from pywebasto import WebastoConnect
 
-webasto = WebastoConnect("your-email", "your-password")
-webasto.connect()
-webasto.update()
 
-for id, device in webasto.devices.items():
-    print(f"Found device: {device.name} (ID: {device.device_id})")
-    print(f"Temperature: {device.temperature}")
+async def main() -> None:
+    async with WebastoConnect("your-email", "your-password") as webasto:
+        await webasto.connect()
+        await webasto.update()
+
+        for id, device in webasto.devices.items():
+            print(f"Found device: {device.name} (ID: {device.device_id})")
+            print(f"Temperature: {device.temperature}")
+
+
+asyncio.run(main())
 ```
 
 More examples can be found in the `example.py` file
+
+### Request robustness
+
+- Read/login requests (`LOGIN`, `GET_*`, `CHANGE_DEVICE`) use bounded retries for transient
+  network/server failures (`429`, `5xx`, connection/timeouts).
+- Command and settings writes are not retried automatically to avoid duplicate side effects.
 
 ## Web Interface Polling
 
