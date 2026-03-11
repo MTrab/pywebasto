@@ -126,18 +126,18 @@ Important behavior:
 
 Confirmed mapping:
 
-- Monday = `64`
-- Tuesday = `1`
-- Wednesday = `2`
-- Thursday = `4`
-- Friday = `8`
-- Saturday = `16`
-- Sunday = `32`
+- Monday = `1`
+- Tuesday = `2`
+- Wednesday = `4`
+- Thursday = `8`
+- Friday = `16`
+- Saturday = `32`
+- Sunday = `64`
 
 Examples:
 
-- `repeat=31` means Tuesday-Saturday (`1+2+4+8+16`)
-- `repeat=72` means Monday+Friday (`64+8`)
+- `repeat=31` means Monday-Friday (`1+2+4+8+16`)
+- `repeat=17` means Monday+Friday (`1+16`)
 
 ### Read timers
 

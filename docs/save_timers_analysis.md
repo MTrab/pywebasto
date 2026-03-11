@@ -118,18 +118,18 @@ Status:
 
 From a capture with seven one-day timers (one per weekday), the following mapping is confirmed:
 
-- `64` = Monday
-- `1` = Tuesday
-- `2` = Wednesday
-- `4` = Thursday
-- `8` = Friday
-- `16` = Saturday
-- `32` = Sunday
+- `1` = Monday
+- `2` = Tuesday
+- `4` = Wednesday
+- `8` = Thursday
+- `16` = Friday
+- `32` = Saturday
+- `64` = Sunday
 
 Examples:
 
-- `repeat: 72` (`64 + 8`) = Monday + Friday
-- `repeat: 31` (`1 + 2 + 4 + 8 + 16`) = Tuesday-Saturday
+- `repeat: 17` (`1 + 16`) = Monday + Friday
+- `repeat: 31` (`1 + 2 + 4 + 8 + 16`) = Monday-Friday
 
 ## Known uncertainties (not proven by these captures alone)
 
