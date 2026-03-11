@@ -22,7 +22,7 @@
 
 ## Repeat bitmask
 
-Fortolkning (foreslået ud fra observeret data):
+Fortolkning:
 
 - bit 0 = mandag
 - bit 1 = tirsdag
