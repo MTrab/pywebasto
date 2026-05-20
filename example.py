@@ -9,7 +9,7 @@ from pywebasto import WebastoConnect
 async def main():
     webasto = WebastoConnect(environ["EMAIL"], environ["PASSWORD"])
     await webasto.connect()
-    await webasto.update()
+    # await webasto.update()
 
     for id, device in webasto.devices.items():
         print(f"Found device: {device.name} (ID: {device.device_id})")

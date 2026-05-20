@@ -26,6 +26,7 @@ from .exceptions import (
     ForbiddenException,
     InvalidRequestException,
     InvalidResponseException,
+    TooManyRequestsException,
     UnauthorizedException,
 )
 from .timer import SimpleTimer
@@ -38,7 +39,7 @@ __all__ = ["WebastoConnect", "SimpleTimer"]
 LOGGER = logging.getLogger(__name__)
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=60, connect=10, sock_read=45)
 MAX_READ_RETRIES = 2
-RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+RETRYABLE_STATUS_CODES = {500, 502, 503, 504}
 RETRYABLE_REQUESTS = {
     Request.LOGIN,
     Request.GET_DATA,
@@ -175,6 +176,10 @@ class WebastoConnect:
                             raise ForbiddenException(
                                 "Access to the requested resource is forbidden"
                             )
+                        if response.status == 429:
+                            raise TooManyRequestsException(
+                                "Too many requests - you are being rate limited"
+                            )
                         if (
                             response.status in RETRYABLE_STATUS_CODES
                             and attempt < max_attempts - 1
@@ -230,29 +235,31 @@ class WebastoConnect:
 
     async def update(self, device_id: str | None = None) -> None:
         """Get current data from Webasto API."""
-        self._data = await self._call(Request.GET_DATA_NOPOLL)
-        available_devices = self._list_devices()
-
         if isinstance(device_id, type(None)):
+            self._data = await self._call(Request.GET_DATA_NOPOLL)
+            available_devices = self._list_devices()
+
             # Loop through all devices
             for device in available_devices:
-                await self._change_device(device["id"])  # Switch device
-
-                device_data = WebastoDevice(device["id"], device["name"])
-                device_data.settings = await self._call(Request.GET_SETTINGS)
-                device_data.last_data = await self._call(Request.GET_DATA)
-                device_data.dev_data = await self._call(Request.GET_DATA_NOPOLL)
-
-                self.devices.update({device["id"]: device_data})
+                self.devices[device["id"]] = WebastoDevice(device["id"], device["name"])
+                await self._update_device_data(device["id"])
         else:
             # A specific device was requested, only update that one
-            await self._change_device(device_id)  # Switch device
-            device_data = self.devices[device_id]  # type: ignore
-            device_data.settings = await self._call(Request.GET_SETTINGS)
-            device_data.last_data = await self._call(Request.GET_DATA)
-            device_data.dev_data = await self._call(Request.GET_DATA_NOPOLL)
+            await self._update_device_data(device_id)
 
-            self.devices.update({device_id: device_data})  # type: ignore
+    async def _update_device_data(
+        self, device_id: str, switch_device: bool = True
+    ) -> None:
+        """Refresh data for one device."""
+        if switch_device:
+            await self._change_device(device_id)
+
+        device_data = self.devices[device_id]  # type: ignore[index]
+        device_data.settings = await self._call(Request.GET_SETTINGS)
+        device_data.last_data = await self._call(Request.GET_DATA)
+        device_data.dev_data = await self._call(Request.GET_DATA_NOPOLL)
+
+        self.devices.update({device_id: device_data})  # type: ignore[arg-type]
 
     async def _change_device(self, device_id: str) -> None:
         """Change the active device."""
@@ -340,7 +347,7 @@ class WebastoConnect:
             json.dumps(payload),
             extra_headers={"X-Requested-With": "XMLHttpRequest"},
         )
-        await self.update(device_id=device.device_id)
+        await self._update_device_data(device.device_id, switch_device=False)
 
     async def get_simple_timers(
         self, device: WebastoDevice, line: Outputs = Outputs.HEATER
@@ -371,7 +378,7 @@ class WebastoConnect:
                 await self._call(Request.COMMAND, CMD_VENTILATION_OFF)
             else:
                 await self._call(Request.COMMAND, CMD_HEATER_OFF)
-        await self.update()
+        await self._update_device_data(device.device_id, switch_device=False)
 
     async def set_output_aux1(self, device: WebastoDevice, state: bool) -> None:
         """Turn on or off the aux1 output."""
@@ -381,7 +388,7 @@ class WebastoConnect:
             await self._call(Request.COMMAND, CMD_AUX1_ON)
         else:
             await self._call(Request.COMMAND, CMD_AUX1_OFF)
-        await self.update()
+        await self._update_device_data(device.device_id, switch_device=False)
 
     async def set_output_aux2(self, device: WebastoDevice, state: bool) -> None:
         """Turn on or off the aux2 output."""
@@ -391,7 +398,7 @@ class WebastoConnect:
             await self._call(Request.COMMAND, CMD_AUX2_ON)
         else:
             await self._call(Request.COMMAND, CMD_AUX2_OFF)
-        await self.update()
+        await self._update_device_data(device.device_id, switch_device=False)
 
     async def ventilation_mode(self, device: WebastoDevice, state: bool) -> None:
         """Turn ventilation mode on or off."""
@@ -431,7 +438,7 @@ class WebastoConnect:
         }
 
         await self._call(Request.POST_SETTING, json.dumps(ventmode))
-        await self.update()
+        await self._update_device_data(device.device_id, switch_device=False)
 
     async def set_main_timeout(
         self,
@@ -440,8 +447,6 @@ class WebastoConnect:
         ventilation: int | None = None,
     ) -> None:
         """Sets timeout of main output port in seconds."""
-        await self._change_device(device_id=device.device_id)
-
         if not isinstance(heater, type(None)):
             device.timeout_heat = heater
 
@@ -492,7 +497,7 @@ class WebastoConnect:
         }
 
         await self._call(Request.POST_SETTING, json.dumps(data))
-        await self.update()
+        await self._update_device_data(device.device_id, switch_device=False)
 
     async def set_low_voltage_cutoff(self, device: WebastoDevice, value: float) -> None:
         """Set the low voltage cutoff value."""
@@ -505,7 +510,7 @@ class WebastoConnect:
             "air_heater": {},
         }
         await self._call(Request.POST_SETTING, json.dumps(payload))
-        await self.update()
+        await self._update_device_data(device.device_id, switch_device=False)
 
     async def set_temperature_compensation(
         self, device: WebastoDevice, value: float
@@ -520,4 +525,4 @@ class WebastoConnect:
             "air_heater": {},
         }
         await self._call(Request.POST_SETTING, json.dumps(payload, indent=4))
-        await self.update()
+        await self._update_device_data(device.device_id, switch_device=False)

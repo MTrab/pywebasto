@@ -15,3 +15,7 @@ class ForbiddenException(Exception):
 
 class InvalidResponseException(Exception):
     """Something went wrong with the response."""
+
+
+class TooManyRequestsException(Exception):
+    """Too many requests - you are being rate limited."""

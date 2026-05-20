@@ -45,7 +45,8 @@ More examples can be found in the `example.py` file
 ### Request robustness
 
 - Read/login requests (`LOGIN`, `GET_*`, `CHANGE_DEVICE`) use bounded retries for transient
-  network/server failures (`429`, `5xx`, connection/timeouts).
+  network/server failures (`5xx`, connection/timeouts).
+- Rate-limited responses (`429`) are not retried automatically.
 - Command and settings writes are not retried automatically to avoid duplicate side effects.
 
 ## Web Interface Polling
