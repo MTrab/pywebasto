@@ -30,7 +30,6 @@ from pywebasto import WebastoConnect
 async def main() -> None:
     async with WebastoConnect("your-email", "your-password") as webasto:
         await webasto.connect()
-        await webasto.update()
 
         for id, device in webasto.devices.items():
             print(f"Found device: {device.name} (ID: {device.device_id})")
@@ -48,12 +47,16 @@ More examples can be found in the `example.py` file
   network/server failures (`5xx`, connection/timeouts).
 - Rate-limited responses (`429`) are not retried automatically.
 - Command and settings writes are not retried automatically to avoid duplicate side effects.
+- Repeated `update()` calls within the refresh interval reuse cached data instead of hitting the
+  API again. The default interval is `15` seconds; pass `refresh_interval=0` to
+  `WebastoConnect(...)` to disable this protection.
 
 ## Web Interface Polling
 
 Observed behavior in the Webasto web interface (`my.webastoconnect.com`):
 
 - Default data refresh interval is `15` seconds - don't refresh faster or you risk getting banned.
+- One full `update()` uses `1 + (4 * number_of_devices)` API requests.
 
 ## Available properties
 

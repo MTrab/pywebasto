@@ -38,6 +38,7 @@ __all__ = ["WebastoConnect", "SimpleTimer"]
 
 LOGGER = logging.getLogger(__name__)
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=60, connect=10, sock_read=45)
+DEFAULT_REFRESH_INTERVAL = 15
 MAX_READ_RETRIES = 2
 RETRYABLE_STATUS_CODES = {500, 502, 503, 504}
 RETRYABLE_REQUESTS = {
@@ -52,7 +53,12 @@ RETRYABLE_REQUESTS = {
 class WebastoConnect:
     """Webasto Connect implementation."""
 
-    def __init__(self, username: str, password: str) -> None:
+    def __init__(
+        self,
+        username: str,
+        password: str,
+        refresh_interval: float = DEFAULT_REFRESH_INTERVAL,
+    ) -> None:
         """Initialize the component."""
         self._usn: str = username
         self._pwd: str = password
@@ -60,6 +66,10 @@ class WebastoConnect:
         self._hssess_webclient: str | None = None
         self._data: dict | None = None
         self._session: aiohttp.ClientSession | None = None
+        self._refresh_interval = refresh_interval
+        self._last_full_update: float | None = None
+        self._last_device_update: dict[str, float] = {}
+        self._update_lock = asyncio.Lock()
 
         self.devices: dict[int, WebastoDevice] = {}
 
@@ -69,7 +79,7 @@ class WebastoConnect:
         if self._hssess is None and self._hssess_webclient is None:
             raise InvalidResponseException("Login failed, no session cookie received")
 
-        await self.update()
+        await self.update(force=True)
 
     def assemble_headers(self) -> dict:
         """Generate headers."""
@@ -233,19 +243,49 @@ class WebastoConnect:
 
         raise InvalidRequestException("API request failed after retries")
 
-    async def update(self, device_id: str | None = None) -> None:
-        """Get current data from Webasto API."""
-        if isinstance(device_id, type(None)):
-            self._data = await self._call(Request.GET_DATA_NOPOLL)
-            available_devices = self._list_devices()
+    def _is_update_fresh(self, last_update: float | None) -> bool:
+        """Return whether cached data is still fresh enough to reuse."""
+        if self._refresh_interval <= 0:
+            return False
 
-            # Loop through all devices
-            for device in available_devices:
-                self.devices[device["id"]] = WebastoDevice(device["id"], device["name"])
-                await self._update_device_data(device["id"])
-        else:
+        if last_update is None:
+            return False
+
+        return monotonic() - last_update < self._refresh_interval
+
+    async def update(self, device_id: str | None = None, force: bool = False) -> None:
+        """Get current data from Webasto API."""
+        async with self._update_lock:
+            if isinstance(device_id, type(None)):
+                if not force and self._is_update_fresh(self._last_full_update):
+                    LOGGER.debug("Skipping update because cached account data is fresh")
+                    return
+
+                await self._update_all_devices()
+                self._last_full_update = monotonic()
+                return
+
+            if not force and self._is_update_fresh(
+                self._last_device_update.get(device_id)
+            ):
+                LOGGER.debug(
+                    "Skipping update for device %s because cached data is fresh",
+                    device_id,
+                )
+                return
+
             # A specific device was requested, only update that one
             await self._update_device_data(device_id)
+
+    async def _update_all_devices(self) -> None:
+        """Refresh account device list and data for all devices."""
+        self._data = await self._call(Request.GET_DATA_NOPOLL)
+        available_devices = self._list_devices()
+
+        # Loop through all devices
+        for device in available_devices:
+            self.devices[device["id"]] = WebastoDevice(device["id"], device["name"])
+            await self._update_device_data(device["id"])
 
     async def _update_device_data(
         self, device_id: str, switch_device: bool = True
@@ -260,6 +300,7 @@ class WebastoConnect:
         device_data.dev_data = await self._call(Request.GET_DATA_NOPOLL)
 
         self.devices.update({device_id: device_data})  # type: ignore[arg-type]
+        self._last_device_update[device_id] = monotonic()
 
     async def _change_device(self, device_id: str) -> None:
         """Change the active device."""

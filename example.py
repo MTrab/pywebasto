@@ -106,6 +106,7 @@ async def main():
         # Update data
         # webasto.update()
         print("-----")
+    await webasto.close()
 
 
 if __name__ == "__main__":

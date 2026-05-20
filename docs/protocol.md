@@ -154,6 +154,10 @@ Status handling:
 
 `update()` flow in client:
 
+Repeated `update()` calls are throttled by a client-side refresh interval. The default is
+15 seconds, matching the observed web interface polling interval. `update(force=True)` bypasses
+this guard, and `WebastoConnect(..., refresh_interval=0)` disables it.
+
 Full account update:
 
 1. Call `GET_DATA_NOPOLL`.

@@ -1,5 +1,7 @@
 """Tests for HTTP retry behavior and session handling."""
 
+import asyncio
+from time import monotonic
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, patch
 
@@ -148,6 +150,57 @@ class TestHttpResilience(IsolatedAsyncioTestCase):
             ],
             [call.args for call in cloud._call.call_args_list],
         )
+
+    async def test_full_update_uses_cached_data_within_refresh_interval(self) -> None:
+        cloud = WebastoConnect("user", "pass")
+        cloud._update_all_devices = AsyncMock()  # type: ignore[method-assign]
+
+        await cloud.update()
+        await cloud.update()
+
+        cloud._update_all_devices.assert_awaited_once()
+
+    async def test_force_update_bypasses_refresh_interval(self) -> None:
+        cloud = WebastoConnect("user", "pass")
+        cloud._update_all_devices = AsyncMock()  # type: ignore[method-assign]
+
+        await cloud.update()
+        await cloud.update(force=True)
+
+        self.assertEqual(cloud._update_all_devices.await_count, 2)
+
+    async def test_device_update_uses_cached_data_within_refresh_interval(self) -> None:
+        cloud = WebastoConnect("user", "pass")
+        cloud.devices["123"] = WebastoDevice("123", "Heater")  # type: ignore[index]
+        cloud._last_device_update["123"] = monotonic()
+        cloud._update_device_data = AsyncMock()  # type: ignore[method-assign]
+
+        await cloud.update(device_id="123")
+
+        cloud._update_device_data.assert_not_awaited()
+
+    async def test_zero_refresh_interval_keeps_repeated_updates_enabled(self) -> None:
+        cloud = WebastoConnect("user", "pass", refresh_interval=0)
+        cloud._update_all_devices = AsyncMock()  # type: ignore[method-assign]
+
+        await cloud.update()
+        await cloud.update()
+
+        self.assertEqual(cloud._update_all_devices.await_count, 2)
+
+    async def test_concurrent_full_updates_share_one_refresh(self) -> None:
+        cloud = WebastoConnect("user", "pass")
+
+        async def update_all_devices() -> None:
+            await asyncio.sleep(0)
+
+        cloud._update_all_devices = AsyncMock(  # type: ignore[method-assign]
+            side_effect=update_all_devices
+        )
+
+        await asyncio.gather(cloud.update(), cloud.update())
+
+        cloud._update_all_devices.assert_awaited_once()
 
     async def test_command_refreshes_only_target_device(self) -> None:
         cloud = WebastoConnect("user", "pass")
