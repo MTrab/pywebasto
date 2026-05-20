@@ -145,12 +145,20 @@ Status handling:
 
 - `200`: marks client as authorized
 - `401`: raises `UnauthorizedException`
-- `403`: schedules async retry after 30s (current implementation retries in background)
+- `403`: raises `ForbiddenException`
+- `429`: raises `TooManyRequestsException` without automatic retry
+- `5xx`: retried for read/login/device-switch requests, then raises `InvalidRequestException`
 - Other non-200: raises `InvalidRequestException` with response text
 
 ## Device Discovery and Data Extraction
 
 `update()` flow in client:
+
+Repeated `update()` calls are throttled by a client-side refresh interval. The default is
+15 seconds, matching the observed web interface polling interval. `update(force=True)` bypasses
+this guard, and `WebastoConnect(..., refresh_interval=0)` disables it.
+
+Full account update:
 
 1. Call `GET_DATA_NOPOLL`.
 2. Read `account_info.devices`.
@@ -159,6 +167,13 @@ Status handling:
    - `GET_SETTINGS`
    - `GET_DATA` (poll=true)
    - `GET_DATA_NOPOLL` (poll=false)
+
+Device-specific update:
+
+1. Call `CHANGE_DEVICE` for the requested device ID.
+2. Call `GET_SETTINGS`.
+3. Call `GET_DATA` (poll=true).
+4. Call `GET_DATA_NOPOLL` (poll=false).
 
 Device list structure expected by code:
 
