@@ -7,6 +7,7 @@ from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock
 
 from pywebasto import AppCredentials, WebastoConnect
+from pywebasto.consts import APP_CLIENT_INFO
 from pywebasto.device import WebastoDevice
 from pywebasto.enums import Outputs
 from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
@@ -131,7 +132,7 @@ class TestAppBackendCalls(IsolatedAsyncioTestCase):
     async def test_default_client_info_uses_package_name(self) -> None:
         cloud = WebastoConnect(client_id="client", client_secret="secret")
 
-        self.assertTrue(cloud._get_client_info().startswith("pywebasto "))
+        self.assertEqual(cloud._get_client_info(), APP_CLIENT_INFO)
 
     async def test_set_output_main_uses_app_cmd(self) -> None:
         cloud = WebastoConnect(client_id="client", client_secret="secret")

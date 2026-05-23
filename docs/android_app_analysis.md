@@ -318,6 +318,8 @@ show up without name/version in device data.
 Live test note: the backend also accepted a non-Android payload shaped as
 `pywebasto <version> <build>`. The first token became the client `name`, and
 the second token became the client `version` in webapi device data.
+The module defaults to `Android 3.2.0` for compatibility with the observed
+production Android client.
 
 ### 3. Register Android push token
 

@@ -3,8 +3,7 @@
 API_URL = "https://my.webastoconnect.com/webapi"
 APP_API_URL = "https://control.webastoconnect.com"
 APP_USER_AGENT = "Google-HTTP-Java-Client/1.24.1 (gzip)"
-APP_CLIENT_BUILD = "app-backend"
-APP_CLIENT_NAME = "pywebasto"
+APP_CLIENT_INFO = "Android 3.2.0"
 
 CMD_HEATER_ON = "OUT H ON"
 CMD_HEATER_OFF = "OUT H OFF"

@@ -56,8 +56,8 @@ print(webasto.client_secret)
 
 Store them somewhere safe and reuse them next time.
 
-The client is shown as `pywebasto` in Webasto's client list. If you want a
-custom name/version there, pass a short text with at least two words:
+The client is shown as `Android 3.2.0` in Webasto's client list by default. If
+you want a custom name/version there, pass a short text with at least two words:
 
 ```python
 webasto = WebastoConnect(
