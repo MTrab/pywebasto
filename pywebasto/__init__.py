@@ -20,6 +20,7 @@ from .consts import (
     CMD_HEATER_ON,
     CMD_VENTILATION_OFF,
     CMD_VENTILATION_ON,
+    USER_AGENT,
 )
 from .enums import Outputs, Request
 from .exceptions import (
@@ -83,9 +84,7 @@ class WebastoConnect:
 
     def assemble_headers(self) -> dict:
         """Generate headers."""
-        _headers: dict = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
-        }
+        _headers: dict = {"User-Agent": USER_AGENT}
 
         if isinstance(self._hssess, type(None)) and isinstance(
             self._hssess_webclient, type(None)
@@ -413,7 +412,11 @@ class WebastoConnect:
             if device.is_ventilation:
                 await self._call(Request.COMMAND, CMD_VENTILATION_ON)
             else:
-                await self._call(Request.COMMAND, CMD_HEATER_ON)
+                await self._call(
+                    Request.COMMAND,
+                    CMD_HEATER_ON,
+                    extra_headers={"Content-Type": "application/x-www-form-urlencoded"},
+                )
         else:
             if device.is_ventilation:
                 await self._call(Request.COMMAND, CMD_VENTILATION_OFF)

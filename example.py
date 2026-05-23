@@ -47,10 +47,10 @@ async def main():
         # webasto.ventilation_mode(device, False)
 
         # Toggle main output
-        # if device.output_main:
-        #     webasto.set_output_main(device, False)
-        # else:
-        #     webasto.set_output_main(device, True)
+        if device.output_main:
+            await webasto.set_output_main(device, False)
+        else:
+            await webasto.set_output_main(device, True)
 
         # Toggle aux1 output
         # if device.output_aux1:
