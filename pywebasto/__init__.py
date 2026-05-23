@@ -84,9 +84,7 @@ class WebastoConnect:
 
     def assemble_headers(self) -> dict:
         """Generate headers."""
-        _headers: dict = {
-            "User-Agent": USER_AGENT
-        }
+        _headers: dict = {"User-Agent": USER_AGENT}
 
         if isinstance(self._hssess, type(None)) and isinstance(
             self._hssess_webclient, type(None)
@@ -414,7 +412,11 @@ class WebastoConnect:
             if device.is_ventilation:
                 await self._call(Request.COMMAND, CMD_VENTILATION_ON)
             else:
-                await self._call(Request.COMMAND, CMD_HEATER_ON, extra_headers={"Content-Type": "application/x-www-form-urlencoded"})
+                await self._call(
+                    Request.COMMAND,
+                    CMD_HEATER_ON,
+                    extra_headers={"Content-Type": "application/x-www-form-urlencoded"},
+                )
         else:
             if device.is_ventilation:
                 await self._call(Request.COMMAND, CMD_VENTILATION_OFF)
