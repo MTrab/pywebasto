@@ -3,6 +3,7 @@
 import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from importlib.metadata import PackageNotFoundError, version
 from inspect import isawaitable
 import json
 import logging
@@ -18,7 +19,8 @@ from .device import WebastoDevice
 from .consts import (
     API_URL,
     APP_API_URL,
-    APP_CLIENT_INFO,
+    APP_CLIENT_BUILD,
+    APP_CLIENT_NAME,
     APP_USER_AGENT,
     CMD_AUX1_OFF,
     CMD_AUX1_ON,
@@ -78,6 +80,7 @@ class WebastoConnect:
         client_secret: str | None = None,
         refresh_interval: float = DEFAULT_REFRESH_INTERVAL,
         credential_store_path: str | None = None,
+        client_info: str | None = None,
         credential_load: Callable[
             [], AppCredentials | dict | Awaitable[AppCredentials | dict | None] | None
         ]
@@ -93,6 +96,7 @@ class WebastoConnect:
         self._credential_store_path = (
             Path(credential_store_path) if credential_store_path is not None else None
         )
+        self._client_info = client_info
         self._credential_load = credential_load
         self._credential_save = credential_save
         self._hssess: str | None = None
@@ -266,8 +270,18 @@ class WebastoConnect:
         await self._app_call(
             "POST",
             f"/remote/client/{self._client_id}/info",
-            payload=APP_CLIENT_INFO,
+            payload=self._get_client_info(),
         )
+
+    def _get_client_info(self) -> str:
+        """Return the client info text shown by the backend."""
+        if self._client_info is not None:
+            return self._client_info
+        try:
+            package_version = version("pywebasto")
+        except PackageNotFoundError:
+            package_version = "0.0.0"
+        return f"{APP_CLIENT_NAME} {package_version} {APP_CLIENT_BUILD}"
 
     async def _ensure_webapi_session(self) -> None:
         """Ensure a web API session exists when username/password were provided."""

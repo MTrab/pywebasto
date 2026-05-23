@@ -315,6 +315,10 @@ The backend uses this to populate the client list fields, for example
 `name="Android"` and `version="3.3.0"`. Clients registered without this call
 show up without name/version in device data.
 
+Live test note: the backend also accepted a non-Android payload shaped as
+`pywebasto <version> <build>`. The first token became the client `name`, and
+the second token became the client `version` in webapi device data.
+
 ### 3. Register Android push token
 
 If `fcmToken` exists locally, the app sends request type `6`:

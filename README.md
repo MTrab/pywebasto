@@ -56,6 +56,17 @@ print(webasto.client_secret)
 
 Store them somewhere safe and reuse them next time.
 
+The client is shown as `pywebasto` in Webasto's client list. If you want a
+custom name/version there, pass a short text with at least two words:
+
+```python
+webasto = WebastoConnect(
+    client_id="your-client-id",
+    client_secret="your-client-secret",
+    client_info="my-client 1.0",
+)
+```
+
 ## First Run With Email And Password
 
 If you do not have app credentials yet, you can still start with email and

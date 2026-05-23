@@ -7,7 +7,6 @@ from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock
 
 from pywebasto import AppCredentials, WebastoConnect
-from pywebasto.consts import APP_CLIENT_INFO
 from pywebasto.device import WebastoDevice
 from pywebasto.enums import Outputs
 from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
@@ -114,7 +113,11 @@ class TestAppBackendCalls(IsolatedAsyncioTestCase):
         self.assertNotIn("Content-Type", headers)
 
     async def test_client_info_uses_remote_info_endpoint(self) -> None:
-        cloud = WebastoConnect(client_id="client", client_secret="secret")
+        cloud = WebastoConnect(
+            client_id="client",
+            client_secret="secret",
+            client_info="pywebasto test 123",
+        )
         cloud._app_call = AsyncMock()  # type: ignore[method-assign]
 
         await cloud._send_client_info()
@@ -122,8 +125,13 @@ class TestAppBackendCalls(IsolatedAsyncioTestCase):
         cloud._app_call.assert_awaited_once_with(
             "POST",
             "/remote/client/client/info",
-            payload=APP_CLIENT_INFO,
+            payload="pywebasto test 123",
         )
+
+    async def test_default_client_info_uses_package_name(self) -> None:
+        cloud = WebastoConnect(client_id="client", client_secret="secret")
+
+        self.assertTrue(cloud._get_client_info().startswith("pywebasto "))
 
     async def test_set_output_main_uses_app_cmd(self) -> None:
         cloud = WebastoConnect(client_id="client", client_secret="secret")
