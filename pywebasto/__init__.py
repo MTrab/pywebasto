@@ -20,6 +20,7 @@ from .consts import (
     CMD_HEATER_ON,
     CMD_VENTILATION_OFF,
     CMD_VENTILATION_ON,
+    USER_AGENT,
 )
 from .enums import Outputs, Request
 from .exceptions import (
@@ -84,7 +85,7 @@ class WebastoConnect:
     def assemble_headers(self) -> dict:
         """Generate headers."""
         _headers: dict = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 Edg/142.0.0.0"
+            "User-Agent": USER_AGENT
         }
 
         if isinstance(self._hssess, type(None)) and isinstance(
