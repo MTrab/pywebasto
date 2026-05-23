@@ -7,6 +7,7 @@ from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock
 
 from pywebasto import AppCredentials, WebastoConnect
+from pywebasto.consts import APP_CLIENT_INFO
 from pywebasto.device import WebastoDevice
 from pywebasto.enums import Outputs
 from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
@@ -27,11 +28,13 @@ class TestAppCredentials(IsolatedAsyncioTestCase):
 
     async def test_connect_does_not_require_context_manager(self) -> None:
         cloud = WebastoConnect(client_id="client", client_secret="secret")
+        cloud._send_client_info = AsyncMock()  # type: ignore[method-assign]
         cloud.update = AsyncMock()  # type: ignore[method-assign]
 
         await cloud.connect()
         await cloud.close()
 
+        cloud._send_client_info.assert_awaited_once()
         cloud.update.assert_awaited_once_with(force=True)
 
     async def test_credentials_load_callback_is_used(self) -> None:
@@ -109,6 +112,18 @@ class TestAppBackendCalls(IsolatedAsyncioTestCase):
         self.assertEqual(headers["User-Agent"], "Google-HTTP-Java-Client/1.24.1 (gzip)")
         self.assertEqual(headers["Accept-Encoding"], "gzip")
         self.assertNotIn("Content-Type", headers)
+
+    async def test_client_info_uses_remote_info_endpoint(self) -> None:
+        cloud = WebastoConnect(client_id="client", client_secret="secret")
+        cloud._app_call = AsyncMock()  # type: ignore[method-assign]
+
+        await cloud._send_client_info()
+
+        cloud._app_call.assert_awaited_once_with(
+            "POST",
+            "/remote/client/client/info",
+            payload=APP_CLIENT_INFO,
+        )
 
     async def test_set_output_main_uses_app_cmd(self) -> None:
         cloud = WebastoConnect(client_id="client", client_secret="secret")

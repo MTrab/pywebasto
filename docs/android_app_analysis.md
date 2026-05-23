@@ -302,14 +302,18 @@ setting a JSON content type.
 After registration, the app can send request type `2`:
 
 ```http
-POST https://control.webastoconnect.com/remuc/mobile-api/client/<clientId>/info
+POST https://control.webastoconnect.com/remote/client/<clientId>/info
 ```
 
 Observed payload source:
 
-- app/build string built from Android app version/build date resources
+- app/build string built from Android app version/build date resources:
+  `Android 3.3.0 1755153921`
 
 This is app info, not device info.
+The backend uses this to populate the client list fields, for example
+`name="Android"` and `version="3.3.0"`. Clients registered without this call
+show up without name/version in device data.
 
 ### 3. Register Android push token
 

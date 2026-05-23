@@ -18,6 +18,7 @@ from .device import WebastoDevice
 from .consts import (
     API_URL,
     APP_API_URL,
+    APP_CLIENT_INFO,
     APP_USER_AGENT,
     CMD_AUX1_OFF,
     CMD_AUX1_ON,
@@ -131,6 +132,7 @@ class WebastoConnect:
             raise InvalidRequestException("Both username and password must be provided")
 
         await self._ensure_app_credentials()
+        await self._send_client_info()
         if self._usn is not None and self._pwd is not None:
             await self._ensure_webapi_session()
 
@@ -256,6 +258,16 @@ class WebastoConnect:
             extra_headers={"Content-Type": "application/json"},
         )
         await self._save_credentials()
+
+    async def _send_client_info(self) -> None:
+        """Send Android app version/build info for the app client."""
+        if self._client_id is None:
+            raise UnauthorizedException("App client id is required")
+        await self._app_call(
+            "POST",
+            f"/remote/client/{self._client_id}/info",
+            payload=APP_CLIENT_INFO,
+        )
 
     async def _ensure_webapi_session(self) -> None:
         """Ensure a web API session exists when username/password were provided."""
