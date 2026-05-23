@@ -1,6 +1,7 @@
 # ThermoConnect Android App Static Analysis
 
-This document records static findings from `ThermoConnect_3.3.0_APKPure.apk`.
+This document records static findings from a local copy of
+`ThermoConnect_3.3.0_APKPure.apk`.
 It is separate from `docs/protocol.md`, which describes the web API used by
 `pywebasto`.
 
@@ -11,7 +12,7 @@ device ids, and check ids.
 
 ## Scope and Evidence
 
-- APK file: `ThermoConnect_3.3.0_APKPure.apk`
+- APK file: `.local/source/ThermoConnect_3.3.0_APKPure.apk`
 - App package: `embelin.webasto`
 - App name: `ThermoConnect`
 - Version: `3.3.0`
