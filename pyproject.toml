@@ -17,6 +17,9 @@ documentation = "https://github.com/mtrab/pywebasto"
 python = "^3.11"
 aiohttp = "^3.13.2"
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
 
 [build-system]
 requires = ["poetry-core"]

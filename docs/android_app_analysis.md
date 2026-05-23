@@ -118,9 +118,9 @@ Request type numbers are implementation details from the APK, not public API.
 | `6` | `POST` | `/setandroiduri` |
 | `7` | `POST` | `/setassoc` |
 | `8` | `GET` | `/assocstatus2` |
-| `9` | `POST` | `/assocstatus2` |
-| `10` | `POST` | `/assocstatus2` |
-| `11` | `POST` | `/assocstatus2` |
+| `9` | `POST` | `/timers2` |
+| `10` | `GET` | `/timers2` |
+| `11` | `GET` | `/status` |
 | `12` | `POST` | `/assoc3` |
 | `13` | `POST` | `/confirmmsg` |
 | `14` | `GET` | `/location2` |
@@ -228,6 +228,13 @@ Manual verification result:
 
 - `POST /remuc/mobile-api/client/<clientId>/register` returned `200 OK` with
   the JSON body shape above.
+
+Follow-up implementation test on 2026-05-23:
+
+- `/register` returned `403 Forbidden` for the same body unless
+  `Content-Type: application/json` was set.
+- This differs from command, association, mode, timer, and location POSTs, which
+  were live-tested with raw UTF-8 bodies and no explicit JSON content type.
 
 Inferred local app behavior:
 
@@ -1479,6 +1486,29 @@ Current conclusion:
 - No Android app endpoint for setting them has been identified.
 - Do not implement app-backend support for these settings unless a future app
   capture or APK version shows concrete endpoint and payload evidence.
+
+## Web API Bootstrap Evidence
+
+Sanitized web API evidence from `GET /webapi/get_service_data?poll=false` shows
+that the response can include the current device id and check id at the top
+level:
+
+```json
+{
+  "id": "<deviceId>",
+  "check_id": "<checkId>",
+  "assocStatus": "ok",
+  "account_info": {
+    "devices": [
+      ["<deviceId>", "<deviceName>"]
+    ]
+  }
+}
+```
+
+This is used only as a bridge when a user logs in with email/password but has no
+stored app `client_id` / `client_secret`: the library can create an app client
+and start `/assoc3` using the web API `id` and `check_id`.
 
 ## Capture Plan
 

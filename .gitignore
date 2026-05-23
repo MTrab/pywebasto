@@ -365,3 +365,4 @@ FodyWeavers.xsd
 build/
 __pycache__/
 .env
+credentials.json

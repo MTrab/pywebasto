@@ -4,9 +4,10 @@
 
 <a href="https://www.buymeacoffee.com/mtrab" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
 
-This Python module provides access to controlling and reading states of Webasto heaters connected to https://my.webastoconnect.com
+Python client for Webasto ThermoConnect devices.
 
-The API is reverse engineered, as Webasto doesn't want to contribute with documentation, to let us integrate this in to our own solutions, such as smart homes.
+The protocol is reverse engineered. There is no official Webasto API for this
+module.
 
 ## Warning
 
@@ -14,12 +15,13 @@ USE THIS MODULE AT YOUR OWN RISK.
 
 ## Installation
 
-Run this command to install the latest release from the PyPI repository:<br/>
-`pip3 install pywebasto`
+```bash
+pip3 install pywebasto
+```
 
-## Usage
+## Login
 
-The following example shows how to get the current temperature measurement from your connected device(s):<br/>
+The preferred login is with an app `client_id` and `client_secret`.
 
 ```python
 import asyncio
@@ -28,107 +30,182 @@ from pywebasto import WebastoConnect
 
 
 async def main() -> None:
-    async with WebastoConnect("your-email", "your-password") as webasto:
+    webasto = WebastoConnect(
+        client_id="your-client-id",
+        client_secret="your-client-secret",
+    )
+
+    try:
         await webasto.connect()
 
-        for id, device in webasto.devices.items():
-            print(f"Found device: {device.name} (ID: {device.device_id})")
-            print(f"Temperature: {device.temperature}")
+        for device in webasto.devices.values():
+            print(f"{device.name}: {device.temperature}{device.temperature_unit}")
+    finally:
+        await webasto.close()
 
 
 asyncio.run(main())
 ```
 
-More examples can be found in the `example.py` file
+You can read the values after connect:
 
-### Request robustness
+```python
+print(webasto.client_id)
+print(webasto.client_secret)
+```
 
-- Read/login requests (`LOGIN`, `GET_*`, `CHANGE_DEVICE`) use bounded retries for transient
-  network/server failures (`5xx`, connection/timeouts).
-- Rate-limited responses (`429`) are not retried automatically.
-- Command and settings writes are not retried automatically to avoid duplicate side effects.
-- Repeated `update()` calls within the refresh interval reuse cached data instead of hitting the
-  API again. The default interval is `15` seconds; pass `refresh_interval=0` to
-  `WebastoConnect(...)` to disable this protection.
+Store them somewhere safe and reuse them next time.
 
-## Web Interface Polling
+## First Run With Email And Password
 
-Observed behavior in the Webasto web interface (`my.webastoconnect.com`):
+If you do not have app credentials yet, you can still start with email and
+password. The module will create an app client and save it if you give it a file
+path.
 
-- Default data refresh interval is `15` seconds - don't refresh faster or you risk getting banned.
-- One full `update()` uses `1 + (4 * number_of_devices)` API requests.
+```python
+import asyncio
 
-## Available properties
+from pywebasto import WebastoConnect
 
-This list indicates the available properties for a heater
-| Property | Description | Type | Example |
-| --- | --- | --- | --- |
-| timeout_heat | Heat mode timeout in seconds | int | |
-| timeout_ventilation | Ventilation mode timeout in seconds | int | |
-| timeout_aux1 | AUX1 timeout in seconds | int | |
-| timeout_aux2 | AUX2 timeout in seconds | int | |
-| icon_heat | Icon used in the webinterface | str | `car_heat` |
-| icon_vent | Icon used in the webinterface | str | |
-| icon_aux1 | Icon used in the webinterface | str | |
-| icon_aux2 | Icon used in the webinterface | str | |
-| temperature | Measured temperature | int | `18` |
-| voltage | Measured battery voltage | float | `12.4` |
-| location | Location of the vehicle, if location is enabled.<br/> `state` indicating if location service is enabled<br/>`lat` and `lon` showing latitude and longitude<br/>`timestamp` unix timestamp of last location update | dict | `{'state': 'ON', 'lat': 'x.xxxxxx', 'lon': 'x.xxxxxx', 'timestamp': 1766325670}` |
-| output_main | State of main output channel | bool | `True` |
-| output_aux1 | State of AUX1 output channel | bool | `False` |
-| output_aux2 | State of AUX2 output channel | bool | `False` |
-| is_ventilation | Is the main output set to ventilation mode? | bool | `False` |
-| temperature_unit | The configured temperature unit of the heater. Either `°C` or `°F` | str | `°C` |
-| hardware_version | Hardware version of the device | str | |
-| software_version | Software (firmware) of the device | str | |
-| software_variant | Software variant(?!) | str | |
-| allow_location | Is location services enabled? | bool | `True` |
-| low_voltage_cutoff | At this voltage, the heater will automatically turn off | float | `11.5` |
-| temperature_compensation | The set deviation from actual to measured temperature | float | `-4.0` |
-| device_id | The API ID of the device | str | `9254659033752365` |
-| name | Name of the device, as set in the app or webinterface | str | `My heater device` |
-| output_main_name | Name of the main output channel | str | `Primary` |
-| output_aux1_name | Name of AUX1 output channel | str | `Output 1` |
-| output_aux2_name | Name of AUX2 output channel | str | `Output 2` |
-| subscription_expiration | When the current subscription will expire | datetime | `datetime.datetime(2025, 12, 21, 16, 6, 28, 254801)` |
-| connection_lost | Raw cloud link state from API (`true` means cloud connection lost) | bool | `False` |
-| is_connected | Derived cloud link state (`not connection_lost`) | bool | `True` |
+
+async def main() -> None:
+    webasto = WebastoConnect(
+        username="your-email",
+        password="your-password",
+        credential_store_path="webasto_credentials.json",
+    )
+
+    try:
+        await webasto.connect()
+
+        print(webasto.client_id)
+        print(webasto.client_secret)
+    finally:
+        await webasto.close()
+
+
+asyncio.run(main())
+```
+
+Integrations that already have their own storage can use `credential_load` and
+`credential_save` instead of `credential_store_path`.
+
+On first run, a device may need approval in the ThermoConnect app. If a device
+is waiting for approval, `device.pending_approval` is `True`. Approve it in the
+app and then call:
+
+```python
+await webasto.update(force=True)
+```
+
+Email and password are still needed for:
+
+- first-time association when app credentials do not already exist
+- `set_low_voltage_cutoff`
+- `set_temperature_compensation`
+- webapi-only settings
+
+## Updates
+
+Status is read from the app endpoint. Normal `update()` calls are cached for 60
+seconds.
+
+```python
+await webasto.update()
+```
+
+Use `force=True` when you know you need fresh data:
+
+```python
+await webasto.update(force=True)
+```
+
+## Available Properties
+
+| Property | Description | Type |
+| --- | --- | --- |
+| client_id | App client id used for the current session | str |
+| client_secret | Secret for the app client id | str |
+| temperature | Measured temperature | int |
+| voltage | Measured battery voltage | float |
+| location | Vehicle location if enabled, otherwise `False` | dict or bool |
+| output_main | Main output state | bool |
+| output_aux1 | AUX1 output state | bool |
+| output_aux2 | AUX2 output state | bool |
+| is_ventilation | Main output is in ventilation mode | bool |
+| temperature_unit | `C` or `F` display unit | str |
+| allow_location | Location setting from webapi settings | bool |
+| low_voltage_cutoff | Webapi low-voltage cutoff setting | float |
+| temperature_compensation | Webapi temperature compensation setting | float |
+| device_id | Device id | str |
+| name | Device name | str |
+| pending_approval | Device is waiting for app approval | bool |
+| association_status | Raw app association status | str |
+| connection_lost | Raw cloud link state | bool |
+| is_connected | Derived cloud link state | bool |
 
 ## Functions
 
-This list indicates the available functions
+| Function | Description |
+| --- | --- |
+| connect | Set up app credentials and load devices |
+| update | Refresh app data, cached for 60 seconds unless `force=True` |
+| get_timers | Read simple timers for an output |
+| save_timers | Save the full simple timer list for an output |
+| set_output_main | Turn heater or ventilation output on/off |
+| set_output_aux1 | Turn AUX1 on/off |
+| set_output_aux2 | Turn AUX2 on/off |
+| ventilation_mode | Switch between heating and ventilation |
+| associate_device | Start association for a DeviceID and CheckID |
+| association_status | Read association status for a device |
+| disassociate_device | Remove this app client from a device |
+| set_location_services | Enable or disable location services |
+| get_location_text | Read raw `/location2` text |
+| set_low_voltage_cutoff | Change low-voltage cutoff using webapi |
+| set_temperature_compensation | Change temperature compensation using webapi |
 
-| Function | Description | Params |
-| --- | --- | --- |
-| connect | Function used to connect to the API | |
-| update | Fetch latest data from the API | `device_id` if set, only update this device |
-| get_timers | Read `simple` timers for a given output line from API data | `device` send command to this device of WebastoDevice class<br/>`line` _optional_ Outputs ENUM, default: `Outputs.HEATER` |
-| save_timers | Save a full list of `simple` timers via `/save_timers` | `device` send command to this device of WebastoDevice class<br/>`timers` list of `SimpleTimer` objects<br/>`line` _optional_ Outputs ENUM, currently supports `Outputs.HEATER` and `Outputs.VENTILATION` |
-| set_output_main | Set current state of main output | `device` send command to this device of WebastoDevice class<br/>`state` bool indicating if it should be switched on (`true`) or off (`false`) |
-| set_output_aux1 | Set current state of AUX1 output | `device` send command to this device of WebastoDevice class<br/>`state` bool indicating if it should be switched on (`true`) or off (`false`) |
-| set_output_aux2 | Set current state of AUX2 output | `device` send command to this device of WebastoDevice class<br/>`state` bool indicating if it should be switched on (`true`) or off (`false`) |
-| ventilation_mode | Switch main output to ventilation mode or heater mode | `device` send command to this device of WebastoDevice class<br/>`state` bool indicating if it should be set to ventilation mode (`true`) or heater mode (`false`) |
-| set_main_timeout | Set the timeout for auto off for the main output | `device` send command to this device of WebastoDevice class<br/>`heater` _optional_ int indicating heater timeout in seconds<br/>`ventilation` _optional_ int indicating ventilation timeout in seconds |
-| set_aux_timeout | Set the timeout for auto off for an AUX output | `device` send command to this device of WebastoDevice class<br/>`timeout` int indicating timeout in seconds<br/>`aux` _optional_ Outputs ENUM indicating AUX to be changed, default: `Outputs.AUX1` |
-| set_low_voltage_cutoff | Sets the minimum voltage before shutting off the device | `device` send command to this device of WebastoDevice class<br/>`value` minimum voltage as float |
-| set_temperature_compensation | Set the temperature compensatioon for the device | `device` send command to this device of WebastoDevice class<br/>`value` temperature compensation as float |
+## Association
 
-## Timers (`simple` only)
+Manual association:
 
-Current timer support is limited to `simple` timers on:
+```python
+status = await webasto.associate_device(
+    device_id="device-id-from-label",
+    check_id="check-id-from-label",
+)
+print(status)
+```
 
-- `Outputs.HEATER` (`line=OUTH`)
-- `Outputs.VENTILATION` (`line=OUTV`)
+The usual first status is `pending`. Approve the request in the ThermoConnect
+app, then refresh:
 
-Important behavior:
+```python
+await webasto.update(force=True)
+```
 
-- `save_timers(...)` sends the full timer list for the line.
-- To edit one timer, read all timers, modify one entry, and save the full list.
-- To delete one timer, read all timers, remove one entry, and save the remaining list.
+## Timers
 
-### Weekday bitmask (`repeat`)
+Timer support is for `simple` timers.
 
-Confirmed mapping:
+```python
+from pywebasto import SimpleTimer
+
+timers = await webasto.get_timers(device)
+
+new_timer = SimpleTimer(
+    start=830,      # minutes after midnight UTC
+    duration=5400,  # seconds
+    repeat=31,      # Monday-Friday
+    enabled=True,
+)
+
+await webasto.save_timers(device, timers + [new_timer])
+```
+
+`save_timers()` sends the full timer list. To edit or delete a timer, read the
+list, change it locally, and save the whole list again.
+
+Weekday bitmask:
 
 - Monday = `1`
 - Tuesday = `2`
@@ -140,93 +217,24 @@ Confirmed mapping:
 
 Examples:
 
-- `repeat=31` means Monday-Friday (`1+2+4+8+16`)
-- `repeat=17` means Monday+Friday (`1+16`)
+- `repeat=31` means Monday-Friday
+- `repeat=17` means Monday and Friday
+- `repeat=0` means no repeat
 
-### Read timers
+## Location
 
-```python
-from pywebasto import WebastoConnect
-
-timers = await webasto.get_timers(device)
-for timer in timers:
-    print(timer)
-```
-
-### Create one timer
+Use the app endpoint to enable or disable location services:
 
 ```python
-from pywebasto import SimpleTimer
-
-timers = await webasto.get_timers(device)
-
-new_timer = SimpleTimer(
-    start=830,          # minutes after midnight (UTC)
-    duration=5400,      # seconds
-    repeat=31,          # weekday bitmask
-    enabled=True,
-    # location is optional
-    # latitude="56.461846",
-    # longitude="10.866533",
-)
-
-await webasto.save_timers(device, timers + [new_timer])
+await webasto.set_location_services(device, True)
 ```
 
-### Edit an existing timer
+After enabling, the device can report `WAITING_FOR_LOCATION` until a fresh
+position is available.
 
-```python
-from pywebasto import SimpleTimer
+## Notes
 
-timers = await webasto.get_timers(device)
-
-# Example: replace first timer with updated start/duration/repeat
-timers[0] = SimpleTimer(
-    start=900,
-    duration=3600,
-    repeat=31,
-    enabled=True,
-)
-
-await webasto.save_timers(device, timers)
-```
-
-### Delete a timer
-
-```python
-timers = await webasto.get_timers(device)
-
-# Example: remove first timer
-updated = timers[1:]
-await webasto.save_timers(device, updated)
-```
-
-### Multiple timers
-
-```python
-from pywebasto import SimpleTimer
-
-timer_a = SimpleTimer(start=830, duration=5400, repeat=31, enabled=True)
-timer_b = SimpleTimer(start=1221, duration=4200, repeat=16, enabled=True)
-
-await webasto.save_timers(device, [timer_a, timer_b])
-```
-
-## My heater doesn't show up
-
-If your heater doesn't show up in the module, please make sure it is connected to the e-mail used.
-
-- Login to https://my.webastoconnect.com _USING THE SAME EMAIL AND PASSWORD_ as used in this module
-- Press `Account`
-
-Make sure your device is listed under devices
-
-If your device is NOT listed under devices:
-
-- Open the ThermoConnect app on your phone
-- Select the missing device (If you have more than one connected)
-- Click on the `"My Webasto Connect` button in the lower left
-- Choose `Login with mobile browser`
-- Login with your existing email and password
-
-The device should now be linked to your email account and will show up at next run
+- Commands and normal status reads use the app backend.
+- Email/password login uses the older webapi only when it is needed.
+- Command writes are not retried automatically.
+- Rate-limited responses raise an exception.

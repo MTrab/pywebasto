@@ -204,6 +204,13 @@ Fields consumed by `WebastoDevice.last_data`:
 
 Fields consumed by `WebastoDevice.dev_data`:
 
+- `id` (device id, observed at top level)
+- `check_id` (device check id, observed at top level)
+
+The top-level `id` and `check_id` values are used only to bootstrap Android app
+client association when the user logs in with email/password and no app client
+credentials are configured.
+
 - `subscription.expiration` (Unix timestamp converted to `datetime`)
 - `connection_lost` (bool; used as cloud connectivity indicator)
 
