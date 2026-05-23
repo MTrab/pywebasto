@@ -414,7 +414,7 @@ class WebastoConnect:
             if device.is_ventilation:
                 await self._call(Request.COMMAND, CMD_VENTILATION_ON)
             else:
-                await self._call(Request.COMMAND, CMD_HEATER_ON)
+                await self._call(Request.COMMAND, CMD_HEATER_ON, extra_headers={"Content-Type": "application/x-www-form-urlencoded"})
         else:
             if device.is_ventilation:
                 await self._call(Request.COMMAND, CMD_VENTILATION_OFF)
