@@ -319,9 +319,10 @@ show up without name/version in device data.
 Live test note: the backend also accepted a non-Android payload shaped as
 `pywebasto <version> <build>`. The first token became the client `name`, and
 the second token became the client `version` in webapi device data. Sending only
-two tokens returned `404 Expected three components in client info`.
-The module defaults to `Android 3.2.0 pywebasto` so Webasto's client list still
-shows `Android` and `3.2.0`.
+two tokens returned `404 Expected three components in client info`. Sending a
+non-integer third token returned `404 Expected stamp to be an integer`.
+The module defaults to `Android 3.2.0 0` so Webasto's client list still shows
+`Android` and `3.2.0`.
 
 ### 3. Register Android push token
 
