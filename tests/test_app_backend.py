@@ -253,6 +253,42 @@ class TestAppDeviceParsing(IsolatedAsyncioTestCase):
         self.assertEqual(cloud.devices["123"].temperature, 18)
         self.assertFalse(cloud.devices["123"].pending_approval)
 
+    async def test_update_with_webapi_session_does_not_switch_devices(self) -> None:
+        cloud = WebastoConnect(client_id="client", client_secret="secret")
+        cloud._hssess_webclient = "cookie"
+        cloud._call = AsyncMock()  # type: ignore[method-assign]
+        cloud._app_call = AsyncMock(
+            return_value={
+                "devices": [
+                    {
+                        "id": "123",
+                        "alias": "Car",
+                        "assocStatus": "ok",
+                        "temperature": "18C",
+                        "voltage": "12.4V",
+                        "location": {"state": "OFF"},
+                        "outputs": [],
+                        "disabled_outputs": [],
+                    },
+                    {
+                        "id": "456",
+                        "alias": "Van",
+                        "assocStatus": "ok",
+                        "temperature": "17C",
+                        "voltage": "12.2V",
+                        "location": {"state": "OFF"},
+                        "outputs": [],
+                        "disabled_outputs": [],
+                    },
+                ]
+            }
+        )  # type: ignore[method-assign]
+
+        await cloud.update(force=True)
+
+        self.assertEqual({"123", "456"}, set(cloud.devices))
+        cloud._call.assert_not_awaited()
+
     async def test_pending_device_is_not_parsed_as_normal_data(self) -> None:
         cloud = WebastoConnect(client_id="client", client_secret="secret")
         cloud._app_call = AsyncMock(

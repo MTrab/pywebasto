@@ -557,25 +557,12 @@ class WebastoConnect:
             self.devices[device_id] = device
             self._last_device_update[device_id] = monotonic()
 
-            if self.uses_webapi_session and not device.pending_approval:
-                await self._update_webapi_device_settings(device_id)
-
     async def _update_device_data(
         self, device_id: str, switch_device: bool = True
     ) -> None:
         """Refresh data for one device."""
         await self._update_all_devices()
         self._last_device_update[device_id] = monotonic()
-
-    async def _update_webapi_device_settings(self, device_id: str) -> None:
-        """Refresh webapi-only settings for one device if available."""
-        if not self.uses_webapi_session:
-            return
-        if device_id not in self.devices:
-            return
-
-        await self._change_device(device_id)
-        self.devices[device_id].settings = await self._call(Request.GET_SETTINGS)
 
     async def _change_device(self, device_id: str) -> None:
         """Change the active device."""

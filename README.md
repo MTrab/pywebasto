@@ -122,6 +122,8 @@ Email and password are still needed for:
 
 Status is read from the app endpoint. Normal `update()` calls are cached for 60
 seconds.
+One update reads all devices associated with the app client. It does not use
+webapi `change_device`.
 
 ```python
 await webasto.update()
@@ -162,7 +164,7 @@ await webasto.update(force=True)
 | Function | Description |
 | --- | --- |
 | connect | Set up app credentials and load devices |
-| update | Refresh app data, cached for 60 seconds unless `force=True` |
+| update | Refresh all app devices, cached for 60 seconds unless `force=True` |
 | get_timers | Read simple timers for an output |
 | save_timers | Save the full simple timer list for an output |
 | set_output_main | Turn heater or ventilation output on/off |

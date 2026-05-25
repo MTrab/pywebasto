@@ -152,7 +152,7 @@ Status handling:
 
 ## Device Discovery and Data Extraction
 
-`update()` flow in client:
+Legacy webapi `update()` flow:
 
 Repeated `update()` calls are throttled by a client-side refresh interval. The default is
 15 seconds, matching the observed web interface polling interval. `update(force=True)` bypasses
@@ -174,6 +174,15 @@ Device-specific update:
 2. Call `GET_SETTINGS`.
 3. Call `GET_DATA` (poll=true).
 4. Call `GET_DATA_NOPOLL` (poll=false).
+
+Current app-backend `update()` flow:
+
+1. Call `GET /remuc/mobile-api/client/<clientId>/all?api_v=8`.
+2. Parse every object in `devices`.
+3. Do not call webapi `CHANGE_DEVICE` for normal status refresh.
+
+Webapi `CHANGE_DEVICE` is only needed before webapi settings writes and reads
+that depend on the webapi active-device context.
 
 Device list structure expected by code:
 
