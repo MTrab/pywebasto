@@ -624,8 +624,17 @@ class WebastoConnect:
     async def _start_missing_associations_from_webapi(self) -> None:
         """Start app association for webapi devices missing from app data."""
         self._data = await self._call(Request.GET_DATA_NOPOLL)
-        for device in self._list_webapi_association_devices():
-            device_id = device["id"]
+        original_device_id = (
+            str(self._data["id"])
+            if isinstance(self._data, dict) and self._data.get("id")
+            else None
+        )
+
+        devices = self._list_webapi_association_devices()
+        did_switch_device = await self._add_missing_webapi_check_ids(devices)
+
+        for device in devices:
+            device_id = str(device["id"])
             check_id = device.get("check_id")
             if device_id in self.devices:
                 continue
@@ -639,6 +648,31 @@ class WebastoConnect:
             if status in ("master", "pending"):
                 continue
             await self.associate_device(device_id, str(check_id))
+
+        if did_switch_device and original_device_id is not None:
+            await self._change_device(original_device_id)
+
+    async def _add_missing_webapi_check_ids(self, devices: list[dict]) -> bool:
+        """Switch webapi device context to read missing check ids."""
+        did_switch_device = False
+        for device in devices:
+            if device.get("check_id"):
+                continue
+            device_id = str(device["id"])
+            await self._change_device(device_id)
+            did_switch_device = True
+            data = await self._call(Request.GET_DATA_NOPOLL)
+            if not isinstance(data, dict):
+                continue
+            if str(data.get("id")) != device_id:
+                continue
+            check_id = data.get("check_id")
+            if check_id:
+                device["check_id"] = check_id
+                if not device.get("name"):
+                    device["name"] = data.get("alias", "")
+
+        return did_switch_device
 
     @staticmethod
     def _extract_simple_timers_from_data(

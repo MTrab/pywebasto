@@ -4,12 +4,12 @@ import json
 import tempfile
 from pathlib import Path
 from unittest import IsolatedAsyncioTestCase
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, call
 
 from pywebasto import AppCredentials, WebastoConnect
 from pywebasto.consts import APP_CLIENT_INFO
 from pywebasto.device import WebastoDevice
-from pywebasto.enums import Outputs
+from pywebasto.enums import Outputs, Request
 from pywebasto.exceptions import InvalidRequestException, UnauthorizedException
 from pywebasto.timer import SimpleTimer
 
@@ -318,6 +318,40 @@ class TestAppDeviceParsing(IsolatedAsyncioTestCase):
         await cloud._start_missing_associations_from_webapi()
 
         cloud.associate_device.assert_awaited_once_with("123", "abcd")
+
+    async def test_webapi_bootstrap_switches_devices_to_find_check_ids(self) -> None:
+        cloud = WebastoConnect(client_id="client", client_secret="secret")
+        cloud._hssess_webclient = "cookie"
+        cloud.devices = {}
+        cloud._call = AsyncMock(  # type: ignore[method-assign]
+            side_effect=[
+                {
+                    "id": "123",
+                    "check_id": "abcd",
+                    "alias": "Car",
+                    "account_info": {"devices": [["123", "Car"], ["456", "Van"]]},
+                },
+                {},
+                {"id": "456", "check_id": "efgh", "alias": "Van"},
+                {},
+            ]
+        )
+        cloud.association_status = AsyncMock(return_value="none")  # type: ignore[method-assign]
+        cloud.associate_device = AsyncMock(return_value="pending")  # type: ignore[method-assign]
+
+        await cloud._start_missing_associations_from_webapi()
+
+        cloud.associate_device.assert_has_awaits(
+            [call("123", "abcd"), call("456", "efgh")]
+        )
+        cloud._call.assert_has_awaits(
+            [
+                call(Request.GET_DATA_NOPOLL),
+                call(Request.CHANGE_DEVICE, {"device": "456"}),
+                call(Request.GET_DATA_NOPOLL),
+                call(Request.CHANGE_DEVICE, {"device": "123"}),
+            ]
+        )
 
     async def test_webapi_only_settings_require_webapi_credentials(self) -> None:
         cloud = WebastoConnect(client_id="client", client_secret="secret")

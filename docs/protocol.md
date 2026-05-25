@@ -182,7 +182,9 @@ Current app-backend `update()` flow:
 3. Do not call webapi `CHANGE_DEVICE` for normal status refresh.
 
 Webapi `CHANGE_DEVICE` is only needed before webapi settings writes and reads
-that depend on the webapi active-device context.
+that depend on the webapi active-device context. It is also used during
+email/password association bootstrap to read `check_id` for each webapi device,
+because `GET_DATA_NOPOLL` exposes `check_id` for the active webapi device.
 
 Device list structure expected by code:
 

@@ -191,6 +191,11 @@ status = await webasto.associate_device(
 print(status)
 ```
 
+If you start with email/password and no app credentials, `connect()` creates an
+app client and starts association for webapi devices it can find. For accounts
+with more than one device, it may use webapi `change_device` during this
+bootstrap step to read each device's `check_id`.
+
 The usual first status is `pending`. Approve the request in the ThermoConnect
 app, then refresh:
 

@@ -1522,6 +1522,8 @@ level:
 This is used only as a bridge when a user logs in with email/password but has no
 stored app `client_id` / `client_secret`: the library can create an app client
 and start `/assoc3` using the web API `id` and `check_id`.
+For multi-device webapi accounts, the library uses webapi `change_device` during
+this bootstrap step to read each device's top-level `id` and `check_id`.
 
 ## Capture Plan
 
