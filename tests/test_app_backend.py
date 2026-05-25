@@ -134,6 +134,16 @@ class TestAppBackendCalls(IsolatedAsyncioTestCase):
 
         self.assertEqual(cloud._get_client_info(), APP_CLIENT_INFO)
 
+    async def test_client_info_requires_integer_stamp(self) -> None:
+        cloud = WebastoConnect(
+            client_id="client",
+            client_secret="secret",
+            client_info="Android 3.2.0 pywebasto",
+        )
+
+        with self.assertRaises(InvalidRequestException):
+            cloud._get_client_info()
+
     async def test_set_output_main_uses_app_cmd(self) -> None:
         cloud = WebastoConnect(client_id="client", client_secret="secret")
         cloud._app_call = AsyncMock()  # type: ignore[method-assign]

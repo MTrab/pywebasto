@@ -273,9 +273,21 @@ class WebastoConnect:
 
     def _get_client_info(self) -> str:
         """Return the client info text shown by the backend."""
-        if self._client_info is not None:
-            return self._client_info
-        return APP_CLIENT_INFO
+        client_info = (
+            self._client_info if self._client_info is not None else APP_CLIENT_INFO
+        )
+        parts = client_info.split()
+        if len(parts) != 3:
+            raise InvalidRequestException(
+                "client_info must contain exactly three parts: name version integer-stamp"
+            )
+        try:
+            int(parts[2])
+        except ValueError as err:
+            raise InvalidRequestException(
+                "client_info stamp must be an integer"
+            ) from err
+        return " ".join(parts)
 
     async def _ensure_webapi_session(self) -> None:
         """Ensure a web API session exists when username/password were provided."""
