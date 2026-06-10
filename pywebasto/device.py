@@ -38,6 +38,8 @@ class WebastoDevice:
         self.__timeout_vent: int = 0
         self.__timeout_aux1: int = 0
         self.__timeout_aux2: int = 0
+        self.__association_status: str | None = None
+        self.__pending_approval: bool = False
 
     @property
     def timeout_heat(self) -> int:
@@ -143,6 +145,81 @@ class WebastoDevice:
                 self.__icon_aux2 = output["icon"]
 
     @property
+    def app_data(self) -> dict | None:
+        """Returns the last app data dictionary."""
+        return self.__last_data
+
+    @app_data.setter
+    def app_data(self, value: dict | None) -> None:
+        """Sets data from the Android app backend."""
+        self.__last_data = value
+        self.__dev_data = value
+
+        if value is None:
+            return
+
+        self.__association_status = value.get("assocStatus")
+        self.__pending_approval = self.__association_status == "pending"
+        if self.__pending_approval:
+            return
+
+        temperature = value.get("temperature")
+        if isinstance(temperature, str) and temperature:
+            self.__iscelcius = temperature[-1] == "C"
+            try:
+                self.__temperature = int(temperature[:-1])
+            except ValueError:
+                self.__temperature = 0
+        elif isinstance(temperature, int | float):
+            self.__temperature = int(temperature)
+
+        voltage = value.get("voltage")
+        if isinstance(voltage, str) and voltage:
+            try:
+                self.__voltage = float(voltage[:-1])
+            except ValueError:
+                self.__voltage = 0.0
+        elif isinstance(voltage, int | float):
+            self.__voltage = float(voltage)
+
+        self.__location = value.get("location", {"state": "OFF"})
+        connection_lost = value.get("connection_lost")
+        if isinstance(connection_lost, bool):
+            self.__connection_lost = connection_lost
+
+        subscription = value.get("subscription")
+        if isinstance(subscription, dict) and isinstance(
+            subscription.get("expiration"), int | float
+        ):
+            self.__subscription_expiration = datetime.fromtimestamp(
+                subscription["expiration"]
+            )
+
+        self.__output_main = {}
+        self.__output_aux1 = {}
+        self.__output_aux2 = {}
+
+        for section in ("outputs", "disabled_outputs"):
+            for output in value.get(section, []):
+                if output["line"] == "OUTH" or output["line"] == "OUTV":
+                    if output["line"] == "OUTH":
+                        self.__icon_heat = output["icon"]
+                        if section == "outputs":
+                            self.__ventilation = False
+                    else:
+                        self.__icon_vent = output["icon"]
+                        if section == "outputs":
+                            self.__ventilation = True
+                    if section == "outputs":
+                        self.__output_main = output
+                elif output["line"] == "OUT1":
+                    self.__output_aux1 = output
+                    self.__icon_aux1 = output["icon"]
+                elif output["line"] == "OUT2":
+                    self.__output_aux2 = output
+                    self.__icon_aux2 = output["icon"]
+
+    @property
     def dev_data(self) -> dict | None:
         """Returns the device data dictionary."""
         return self.__dev_data
@@ -197,7 +274,7 @@ class WebastoDevice:
     @property
     def location(self) -> dict | bool:
         """Returns the current location."""
-        return self.__location if self.__location["state"] == "ON" else False
+        return self.__location if self.__location.get("state") == "ON" else False
 
     @property
     def output_main(self) -> bool:
@@ -334,6 +411,16 @@ class WebastoDevice:
             return None
 
         return not self.__connection_lost
+
+    @property
+    def association_status(self) -> str | None:
+        """Get the app association status."""
+        return self.__association_status
+
+    @property
+    def pending_approval(self) -> bool:
+        """Return whether the device is waiting for association approval."""
+        return self.__pending_approval
 
     def __get_value(self, group: str, key: str) -> Any:
         """Get a value from the settings dict."""

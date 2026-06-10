@@ -119,37 +119,36 @@ class TestHttpResilience(IsolatedAsyncioTestCase):
         self.assertEqual({"online": True}, result)
         self.assertEqual(session.calls, 2)
 
-    async def test_specific_device_update_skips_device_list_refresh(self) -> None:
-        cloud = WebastoConnect("user", "pass")
-        cloud.devices["123"] = WebastoDevice("123", "Heater")  # type: ignore[index]
-        settings_payload = {
-            "settings_tab": [
-                {"group": "general", "options": []},
-                {"group": "outputs", "options": []},
-            ]
-        }
-        last_data_payload = {
-            "temperature": "18C",
-            "voltage": "12.4V",
-            "location": {"state": "OFF"},
-            "outputs": [{"line": "OUTH", "state": "OFF", "icon": "car_heat"}],
-        }
-        dev_data_payload = {"subscription": {"expiration": 1766325670}}
-        cloud._call = AsyncMock(  # type: ignore[method-assign]
-            side_effect=[None, settings_payload, last_data_payload, dev_data_payload]
+    async def test_specific_device_update_uses_app_backend(self) -> None:
+        cloud = WebastoConnect(client_id="client", client_secret="secret")
+        cloud._call = AsyncMock()  # type: ignore[method-assign]
+        cloud._app_call = AsyncMock(  # type: ignore[method-assign]
+            return_value={
+                "devices": [
+                    {
+                        "id": "123",
+                        "assocStatus": "ok",
+                        "temperature": "18C",
+                        "voltage": "12.4V",
+                        "location": {"state": "OFF"},
+                        "subscription": {"expiration": 1766325670},
+                        "outputs": [
+                            {"line": "OUTH", "state": "OFF", "icon": "car_heat"}
+                        ],
+                        "disabled_outputs": [],
+                    }
+                ]
+            }
         )
 
         await cloud.update(device_id="123")
 
-        self.assertEqual(
-            [
-                (Request.CHANGE_DEVICE, {"device": "123"}),
-                (Request.GET_SETTINGS,),
-                (Request.GET_DATA,),
-                (Request.GET_DATA_NOPOLL,),
-            ],
-            [call.args for call in cloud._call.call_args_list],
+        cloud._app_call.assert_awaited_once_with(
+            "GET",
+            "/remuc/mobile-api/client/client/all?api_v=8",
+            expect_json=True,
         )
+        cloud._call.assert_not_awaited()
 
     async def test_full_update_uses_cached_data_within_refresh_interval(self) -> None:
         cloud = WebastoConnect("user", "pass")
@@ -204,13 +203,20 @@ class TestHttpResilience(IsolatedAsyncioTestCase):
 
     async def test_command_refreshes_only_target_device(self) -> None:
         cloud = WebastoConnect("user", "pass")
+        cloud._client_id = "client"  # type: ignore[attr-defined]
+        cloud._client_secret = "secret"  # type: ignore[attr-defined]
         device = WebastoDevice("123", "Heater")
-        cloud._call = AsyncMock(side_effect=[None, None])  # type: ignore[method-assign]
+        cloud._app_call = AsyncMock()  # type: ignore[method-assign]
         cloud._update_device_data = AsyncMock()  # type: ignore[method-assign]
 
         await cloud.set_output_main(device, True)
 
-        cloud._update_device_data.assert_awaited_once_with("123", switch_device=False)
+        cloud._app_call.assert_awaited_once_with(
+            "POST",
+            "/remote/client/client/device/123/cmd",
+            payload="OUT H ON",
+        )
+        cloud._update_device_data.assert_awaited_once_with("123")
 
     async def test_close_closes_persistent_session(self) -> None:
         cloud = WebastoConnect("user", "pass")

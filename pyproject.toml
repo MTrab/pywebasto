@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pywebasto"
-version = "2.0.4"
+version = "3.0.0"
 description = "API library for Webasto ThermoConnect devices"
 authors = ["Malene Trab <malene@trab.dk>"]
 license = "MIT"
@@ -16,6 +16,9 @@ documentation = "https://github.com/mtrab/pywebasto"
 [tool.poetry.dependencies]
 python = "^3.11"
 aiohttp = "^3.13.2"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
 
 
 [build-system]

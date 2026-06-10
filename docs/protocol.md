@@ -152,7 +152,7 @@ Status handling:
 
 ## Device Discovery and Data Extraction
 
-`update()` flow in client:
+Legacy webapi `update()` flow:
 
 Repeated `update()` calls are throttled by a client-side refresh interval. The default is
 15 seconds, matching the observed web interface polling interval. `update(force=True)` bypasses
@@ -174,6 +174,17 @@ Device-specific update:
 2. Call `GET_SETTINGS`.
 3. Call `GET_DATA` (poll=true).
 4. Call `GET_DATA_NOPOLL` (poll=false).
+
+Current app-backend `update()` flow:
+
+1. Call `GET /remuc/mobile-api/client/<clientId>/all?api_v=8`.
+2. Parse every object in `devices`.
+3. Do not call webapi `CHANGE_DEVICE` for normal status refresh.
+
+Webapi `CHANGE_DEVICE` is only needed before webapi settings writes and reads
+that depend on the webapi active-device context. It is also used during
+email/password association bootstrap to read `check_id` for each webapi device,
+because `GET_DATA_NOPOLL` exposes `check_id` for the active webapi device.
 
 Device list structure expected by code:
 
@@ -203,6 +214,13 @@ Fields consumed by `WebastoDevice.last_data`:
 ## Parsed Fields from `GET_DATA_NOPOLL`
 
 Fields consumed by `WebastoDevice.dev_data`:
+
+- `id` (device id, observed at top level)
+- `check_id` (device check id, observed at top level)
+
+The top-level `id` and `check_id` values are used only to bootstrap Android app
+client association when the user logs in with email/password and no app client
+credentials are configured.
 
 - `subscription.expiration` (Unix timestamp converted to `datetime`)
 - `connection_lost` (bool; used as cloud connectivity indicator)
