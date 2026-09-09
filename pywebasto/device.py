@@ -192,7 +192,7 @@ class WebastoDevice:
             subscription.get("expiration"), int | float
         ):
             self.__subscription_expiration = datetime.fromtimestamp(
-                subscription["expiration"]
+                subscription["expiration"], timezone.utc
             )
 
         self.__output_main = {}
@@ -232,7 +232,7 @@ class WebastoDevice:
             return
 
         self.__subscription_expiration = datetime.fromtimestamp(
-            value["subscription"]["expiration"]
+            value["subscription"]["expiration"], timezone.utc
         )
         connection_lost = value.get("connection_lost")
         if isinstance(connection_lost, bool):
@@ -280,7 +280,7 @@ class WebastoDevice:
     def output_main(self) -> bool:
         """Get the main output state."""
         if "state" in self.__output_main:
-            return False if self.__output_main["state"] == "OFF" else True
+            return self.__output_main["state"] != "OFF"
         else:
             return False
 
@@ -308,7 +308,7 @@ class WebastoDevice:
     def output_aux1(self) -> bool:
         """Get the aux output state."""
         if "state" in self.__output_aux1:
-            return False if self.__output_aux1["state"] == "OFF" else True
+            return self.__output_aux1["state"] != "OFF"
         else:
             return False
 
@@ -316,7 +316,7 @@ class WebastoDevice:
     def output_aux2(self) -> bool:
         """Get the aux output state."""
         if "state" in self.__output_aux2:
-            return False if self.__output_aux2["state"] == "OFF" else True
+            return self.__output_aux2["state"] != "OFF"
         else:
             return False
 
@@ -438,7 +438,7 @@ class WebastoDevice:
     def __get_timeouts(self) -> None:
         """Get output timeouts from the settings dict."""
         if self.settings is None:
-            return None
+            return
 
         for g in self.settings["settings_tab"]:
             if g["group"] not in ["webasto", "outputs"]:

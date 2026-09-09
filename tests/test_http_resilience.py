@@ -85,9 +85,11 @@ class TestHttpResilience(IsolatedAsyncioTestCase):
         session = _FakeSession([_FakeResponse(status=503, text_data="busy")])
         cloud._get_session = AsyncMock(return_value=session)  # type: ignore[method-assign]
 
-        with patch("pywebasto.__init__.asyncio.sleep", new=AsyncMock()):
-            with self.assertRaises(InvalidRequestException):
-                await cloud._call(Request.COMMAND, {"command": "noop"})
+        with (
+            patch("pywebasto.__init__.asyncio.sleep", new=AsyncMock()),
+            self.assertRaises(InvalidRequestException),
+        ):
+            await cloud._call(Request.COMMAND, {"command": "noop"})
 
         self.assertEqual(session.calls, 1)
 
@@ -96,9 +98,11 @@ class TestHttpResilience(IsolatedAsyncioTestCase):
         session = _FakeSession([_FakeResponse(status=429, text_data="too many")])
         cloud._get_session = AsyncMock(return_value=session)  # type: ignore[method-assign]
 
-        with patch("pywebasto.__init__.asyncio.sleep", new=AsyncMock()) as sleep_mock:
-            with self.assertRaises(TooManyRequestsException):
-                await cloud._call(Request.GET_DATA_NOPOLL)
+        with (
+            patch("pywebasto.__init__.asyncio.sleep", new=AsyncMock()) as sleep_mock,
+            self.assertRaises(TooManyRequestsException),
+        ):
+            await cloud._call(Request.GET_DATA_NOPOLL)
 
         self.assertEqual(session.calls, 1)
         sleep_mock.assert_not_awaited()

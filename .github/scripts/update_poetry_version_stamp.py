@@ -1,8 +1,8 @@
 """Update the version stamp in pyproject.toml."""
 
 import os
-import sys
 import re
+import sys
 
 
 def update_version():

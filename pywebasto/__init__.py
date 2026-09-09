@@ -1,19 +1,18 @@
 """Module for interfacing with Webasto Connect."""
 
 import asyncio
+import json
+import logging
+import sys
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from inspect import isawaitable
-import json
-import logging
 from pathlib import Path
-import sys
 from time import monotonic
+from typing import Self
 from uuid import uuid4
 
 import aiohttp
-
-from .device import WebastoDevice
 
 from .consts import (
     API_URL,
@@ -30,6 +29,7 @@ from .consts import (
     CMD_VENTILATION_ON,
     USER_AGENT,
 )
+from .device import WebastoDevice
 from .enums import Outputs, Request
 from .exceptions import (
     ForbiddenException,
@@ -43,7 +43,7 @@ from .timer import SimpleTimer
 if sys.version_info < (3, 11, 0):
     sys.exit("The pywebasto module requires Python 3.11.0 or later")
 
-__all__ = ["AppCredentials", "WebastoConnect", "SimpleTimer"]
+__all__ = ["AppCredentials", "SimpleTimer", "WebastoConnect"]
 
 LOGGER = logging.getLogger(__name__)
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=60, connect=10, sock_read=45)
@@ -57,6 +57,18 @@ RETRYABLE_REQUESTS = {
     Request.GET_SETTINGS,
     Request.CHANGE_DEVICE,
 }
+WEBAPI_AJAX_HEADERS = {
+    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    "Origin": "https://my.webastoconnect.com",
+    "Referer": "https://my.webastoconnect.com/index.html?lang=en",
+    "X-Requested-With": "XMLHttpRequest",
+}
+
+
+def _webclient_json_number(value: float) -> int | float:
+    """Match JavaScript JSON.stringify formatting for numeric form values."""
+    numeric_value = float(value)
+    return int(numeric_value) if numeric_value.is_integer() else numeric_value
 
 
 @dataclass(slots=True)
@@ -142,17 +154,16 @@ class WebastoConnect:
         if self.uses_webapi_session:
             await self._start_missing_associations_from_webapi()
             await self.update(force=True)
+            await self._update_all_webapi_device_settings()
 
     def assemble_headers(self) -> dict:
         """Generate headers."""
         _headers: dict = {"User-Agent": USER_AGENT}
 
-        if isinstance(self._hssess, type(None)) and isinstance(
-            self._hssess_webclient, type(None)
-        ):
+        if (self._hssess is None) and (self._hssess_webclient is None):
             pass
         else:
-            if isinstance(self._hssess_webclient, type(None)):
+            if self._hssess_webclient is None:
                 _headers.update({"Cookie": f"hssess={self._hssess};"})
             else:
                 _headers.update(
@@ -320,7 +331,7 @@ class WebastoConnect:
         if self._session is not None and not self._session.closed:
             await self._session.close()
 
-    async def __aenter__(self) -> "WebastoConnect":
+    async def __aenter__(self) -> Self:
         """Allow async context manager usage."""
         return self
 
@@ -336,7 +347,7 @@ class WebastoConnect:
     ) -> dict | None:
         """Make an API request."""
 
-        if isinstance(payload, type(None)):
+        if payload is None:
             payload = {}
 
         headers = self.assemble_headers()
@@ -510,7 +521,7 @@ class WebastoConnect:
     async def update(self, device_id: str | None = None, force: bool = False) -> None:
         """Get current data from Webasto API."""
         async with self._update_lock:
-            if isinstance(device_id, type(None)):
+            if device_id is None:
                 if not force and self._is_update_fresh(self._last_full_update):
                     LOGGER.debug("Skipping update because cached account data is fresh")
                     return
@@ -564,6 +575,32 @@ class WebastoConnect:
         await self._update_all_devices()
         self._last_device_update[device_id] = monotonic()
 
+    async def _update_all_webapi_device_settings(self) -> None:
+        """Refresh webapi-only settings for all associated devices."""
+        for device_id in self.devices:
+            await self._update_webapi_device_settings(device_id)
+
+    async def _update_webapi_device_settings(
+        self, device_id: str, switch_device: bool = True
+    ) -> None:
+        """Refresh webapi-only settings for one associated device."""
+        if not self.uses_webapi_session:
+            return
+
+        device = self.devices.get(device_id)
+        if device is None or device.pending_approval:
+            return
+
+        if switch_device:
+            await self._change_device(device_id)
+
+        settings = await self._call(Request.GET_SETTINGS)
+        if not isinstance(settings, dict):
+            raise InvalidResponseException(
+                f"Invalid settings response for device {device_id}"
+            )
+        device.settings = settings
+
     async def _change_device(self, device_id: str) -> None:
         """Change the active device."""
         await self._call(Request.CHANGE_DEVICE, {"device": device_id})
@@ -571,7 +608,7 @@ class WebastoConnect:
     def _list_devices(self) -> list[dict]:
         """List all devices associated with the account."""
         device_list = []
-        if isinstance(self._data, type(None)):
+        if self._data is None:
             return device_list
 
         account_info = self._data.get("account_info", {})
@@ -817,11 +854,28 @@ class WebastoConnect:
     async def ventilation_mode(self, device: WebastoDevice, state: bool) -> None:
         """Turn ventilation mode on or off."""
         self._raise_if_pending(device)
+        app_data = device.app_data or {}
+        active_output = next(
+            (
+                output
+                for output in app_data.get("outputs", [])
+                if output.get("line") in ("OUTH", "OUTV")
+            ),
+            {},
+        )
+        LOGGER.debug(
+            "Changing heater mode to %s (association status: %s, "
+            "ventilation available: %s)",
+            "ventilation" if state else "heating",
+            app_data.get("assocStatus"),
+            active_output.get("ventilation_mode_available"),
+        )
         payload = {"dev_id": device.device_id, "mode": 1 if state else 0}
         await self._app_call(
             "POST",
             f"/remuc/mobile-api/client/{self._client_id}/heatermode",
             payload=json.dumps(payload, separators=(",", ":")),
+            extra_headers={"Content-Type": "application/json"},
         )
         await self.update(device_id=device.device_id, force=True)
 
@@ -886,10 +940,10 @@ class WebastoConnect:
     ) -> None:
         """Sets timeout of main output port in seconds."""
         await self._ensure_webapi_session()
-        if not isinstance(heater, type(None)):
+        if heater is not None:
             device.timeout_heat = heater
 
-        if not isinstance(ventilation, type(None)):
+        if ventilation is not None:
             device.timeout_vent = ventilation
 
         await self._change_device(device_id=device.device_id)
@@ -918,7 +972,11 @@ class WebastoConnect:
             "location_events": None,
             "air_heater": {},
         }
-        await self._call(Request.POST_SETTING, json.dumps(payload))
+        await self._call(
+            Request.POST_SETTING,
+            json.dumps(payload),
+            extra_headers=WEBAPI_AJAX_HEADERS,
+        )
         await self.update(device_id=device.device_id, force=True)
 
     async def set_aux_timeout(
@@ -963,7 +1021,11 @@ class WebastoConnect:
             "air_heater": {},
         }
 
-        await self._call(Request.POST_SETTING, json.dumps(data))
+        await self._call(
+            Request.POST_SETTING,
+            json.dumps(data),
+            extra_headers=WEBAPI_AJAX_HEADERS,
+        )
         await self._update_device_data(device.device_id, switch_device=False)
 
     async def set_low_voltage_cutoff(self, device: WebastoDevice, value: float) -> None:
@@ -972,13 +1034,18 @@ class WebastoConnect:
         await self._change_device(device_id=device.device_id)
 
         payload = {
-            "device_settings": {"low_voltage_cutoff": value},
+            "device_settings": {"low_voltage_cutoff": _webclient_json_number(value)},
             "service_settings": {},
             "location_events": None,
             "air_heater": {},
         }
-        await self._call(Request.POST_SETTING, json.dumps(payload))
+        await self._call(
+            Request.POST_SETTING,
+            json.dumps(payload),
+            extra_headers=WEBAPI_AJAX_HEADERS,
+        )
         await self._update_device_data(device.device_id, switch_device=False)
+        await self._update_webapi_device_settings(device.device_id, switch_device=False)
 
     async def set_temperature_compensation(
         self, device: WebastoDevice, value: float
@@ -988,10 +1055,15 @@ class WebastoConnect:
         await self._change_device(device_id=device.device_id)
 
         payload = {
-            "device_settings": {"ext_temp_comp": value},
+            "device_settings": {"ext_temp_comp": _webclient_json_number(value)},
             "service_settings": {},
             "location_events": None,
             "air_heater": {},
         }
-        await self._call(Request.POST_SETTING, json.dumps(payload, indent=4))
+        await self._call(
+            Request.POST_SETTING,
+            json.dumps(payload),
+            extra_headers=WEBAPI_AJAX_HEADERS,
+        )
         await self._update_device_data(device.device_id, switch_device=False)
+        await self._update_webapi_device_settings(device.device_id, switch_device=False)

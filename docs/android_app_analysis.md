@@ -518,6 +518,16 @@ Manual verification on 2026-05-23 confirmed the URL above. An earlier attempt
 with `/client/<clientId>/device/<deviceId>/heatermode` returned `404 Not Found`;
 the app-built endpoint does not include `/device/<deviceId>` in the path.
 
+Live verification on 2026-09-09 found that the backend now returns `403
+Forbidden` for this request without a content type. The same authenticated
+request and payload returned `200 OK` with:
+
+```http
+Content-Type: application/json
+```
+
+Implementations must include that header for `/heatermode`.
+
 Ventilation mode request:
 
 ```json

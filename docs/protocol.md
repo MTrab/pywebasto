@@ -40,6 +40,20 @@ Cookie behavior in client:
    - prefers `hssess-webclient` when available
    - otherwise uses `hssess`
 
+Webapi settings writes mirror the same-origin AJAX request made by webclient
+3.4 (`js/webclient.js`, inspected 2026-09-09). Sanitized browser captures in
+`docs/dumps/` confirm these write headers:
+
+- `Content-Type: application/x-www-form-urlencoded; charset=UTF-8`
+- `Origin: https://my.webastoconnect.com`
+- `Referer: https://my.webastoconnect.com/index.html?lang=en`
+- `X-Requested-With: XMLHttpRequest`
+
+Numeric settings mirror the webclient's `parseFloat` plus `JSON.stringify`
+serialization. Integer-valued floats are therefore sent without a decimal
+suffix (for example, `-2.0` is encoded as `-2`), while fractional values keep
+their decimal component.
+
 ## Endpoint Map
 
 All paths are relative to `/webapi`.
@@ -180,6 +194,12 @@ Current app-backend `update()` flow:
 1. Call `GET /remuc/mobile-api/client/<clientId>/all?api_v=8`.
 2. Parse every object in `devices`.
 3. Do not call webapi `CHANGE_DEVICE` for normal status refresh.
+
+When email/password credentials provide a webapi session, `connect()` also
+selects each associated device and calls `GET_SETTINGS` once. This populates
+settings that are absent from the app backend, including `low_voltage_cutoff`
+and `ext_temp_comp`. A write to either setting refreshes `GET_SETTINGS` for the
+selected device so the in-memory value reflects the server response.
 
 Webapi `CHANGE_DEVICE` is only needed before webapi settings writes and reads
 that depend on the webapi active-device context. It is also used during
