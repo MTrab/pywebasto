@@ -118,6 +118,9 @@ Email and password are still needed for:
 - `set_temperature_compensation`
 - webapi-only settings
 
+When they are provided, `connect()` loads the webapi-only settings for each
+associated device. Settings writes reload those values from the webapi response.
+
 ## Updates
 
 Status is read from the app endpoint. Normal `update()` calls are cached for 60

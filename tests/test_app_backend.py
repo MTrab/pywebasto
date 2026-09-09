@@ -37,6 +37,28 @@ class TestAppCredentials(IsolatedAsyncioTestCase):
         cloud._send_client_info.assert_awaited_once()
         cloud.update.assert_awaited_once_with(force=True)
 
+    async def test_connect_loads_webapi_only_settings(self) -> None:
+        cloud = WebastoConnect(
+            "user", "pass", client_id="client", client_secret="secret"
+        )
+        cloud._send_client_info = AsyncMock()  # type: ignore[method-assign]
+
+        async def establish_webapi_session() -> None:
+            cloud._hssess_webclient = "cookie"
+
+        cloud._ensure_webapi_session = AsyncMock(  # type: ignore[method-assign]
+            side_effect=establish_webapi_session
+        )
+        cloud.update = AsyncMock()  # type: ignore[method-assign]
+        cloud._start_missing_associations_from_webapi = AsyncMock()  # type: ignore[method-assign]
+        cloud._update_all_webapi_device_settings = AsyncMock()  # type: ignore[method-assign]
+
+        await cloud.connect()
+
+        self.assertEqual(cloud.update.await_count, 2)
+        cloud._start_missing_associations_from_webapi.assert_awaited_once()
+        cloud._update_all_webapi_device_settings.assert_awaited_once()
+
     async def test_credentials_load_callback_is_used(self) -> None:
         cloud = WebastoConnect(
             credential_load=lambda: AppCredentials("client", "secret")
@@ -289,6 +311,57 @@ class TestAppDeviceParsing(IsolatedAsyncioTestCase):
         self.assertEqual({"123", "456"}, set(cloud.devices))
         cloud._call.assert_not_awaited()
 
+    async def test_webapi_settings_are_parsed_for_all_devices(self) -> None:
+        cloud = WebastoConnect(client_id="client", client_secret="secret")
+        cloud._hssess_webclient = "cookie"
+        cloud.devices = {
+            "123": WebastoDevice("123", "Car"),
+            "456": WebastoDevice("456", "Van"),
+        }
+        cloud._call = AsyncMock(  # type: ignore[method-assign]
+            side_effect=[
+                None,
+                {
+                    "settings_tab": [
+                        {
+                            "group": "general",
+                            "options": [
+                                {"key": "low_voltage_cutoff", "value": 11.8},
+                                {"key": "ext_temp_comp", "value": -1.5},
+                            ],
+                        }
+                    ]
+                },
+                None,
+                {
+                    "settings_tab": [
+                        {
+                            "group": "general",
+                            "options": [
+                                {"key": "low_voltage_cutoff", "value": 12.1},
+                                {"key": "ext_temp_comp", "value": 0.5},
+                            ],
+                        }
+                    ]
+                },
+            ]
+        )
+
+        await cloud._update_all_webapi_device_settings()
+
+        self.assertEqual(cloud.devices["123"].low_voltage_cutoff, 11.8)
+        self.assertEqual(cloud.devices["123"].temperature_compensation, -1.5)
+        self.assertEqual(cloud.devices["456"].low_voltage_cutoff, 12.1)
+        self.assertEqual(cloud.devices["456"].temperature_compensation, 0.5)
+        cloud._call.assert_has_awaits(
+            [
+                call(Request.CHANGE_DEVICE, {"device": "123"}),
+                call(Request.GET_SETTINGS),
+                call(Request.CHANGE_DEVICE, {"device": "456"}),
+                call(Request.GET_SETTINGS),
+            ]
+        )
+
     async def test_pending_device_is_not_parsed_as_normal_data(self) -> None:
         cloud = WebastoConnect(client_id="client", client_secret="secret")
         cloud._app_call = AsyncMock(
@@ -359,6 +432,40 @@ class TestAppDeviceParsing(IsolatedAsyncioTestCase):
 
         with self.assertRaises(UnauthorizedException):
             await cloud.set_low_voltage_cutoff(device, 11.5)
+
+    async def test_low_voltage_write_refreshes_server_setting(self) -> None:
+        cloud = WebastoConnect(
+            "user", "pass", client_id="client", client_secret="secret"
+        )
+        cloud._hssess_webclient = "cookie"
+        device = WebastoDevice("123", "Heater")
+        cloud.devices = {"123": device}
+        cloud._call = AsyncMock(  # type: ignore[method-assign]
+            side_effect=[
+                None,
+                None,
+                {
+                    "settings_tab": [
+                        {
+                            "group": "general",
+                            "options": [
+                                {"key": "low_voltage_cutoff", "value": 11.7},
+                                {"key": "ext_temp_comp", "value": -0.5},
+                            ],
+                        }
+                    ]
+                },
+            ]
+        )
+        cloud._update_device_data = AsyncMock()  # type: ignore[method-assign]
+
+        await cloud.set_low_voltage_cutoff(device, 11.7)
+
+        self.assertEqual(device.low_voltage_cutoff, 11.7)
+        cloud._update_device_data.assert_awaited_once_with(
+            "123", switch_device=False
+        )
+        self.assertEqual(cloud._call.await_args_list[-1], call(Request.GET_SETTINGS))
 
 
 class TestAppUpdateThrottle(IsolatedAsyncioTestCase):

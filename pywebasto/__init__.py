@@ -142,6 +142,7 @@ class WebastoConnect:
         if self.uses_webapi_session:
             await self._start_missing_associations_from_webapi()
             await self.update(force=True)
+            await self._update_all_webapi_device_settings()
 
     def assemble_headers(self) -> dict:
         """Generate headers."""
@@ -564,6 +565,32 @@ class WebastoConnect:
         await self._update_all_devices()
         self._last_device_update[device_id] = monotonic()
 
+    async def _update_all_webapi_device_settings(self) -> None:
+        """Refresh webapi-only settings for all associated devices."""
+        for device_id in self.devices:
+            await self._update_webapi_device_settings(device_id)
+
+    async def _update_webapi_device_settings(
+        self, device_id: str, switch_device: bool = True
+    ) -> None:
+        """Refresh webapi-only settings for one associated device."""
+        if not self.uses_webapi_session:
+            return
+
+        device = self.devices.get(device_id)
+        if device is None or device.pending_approval:
+            return
+
+        if switch_device:
+            await self._change_device(device_id)
+
+        settings = await self._call(Request.GET_SETTINGS)
+        if not isinstance(settings, dict):
+            raise InvalidResponseException(
+                f"Invalid settings response for device {device_id}"
+            )
+        device.settings = settings
+
     async def _change_device(self, device_id: str) -> None:
         """Change the active device."""
         await self._call(Request.CHANGE_DEVICE, {"device": device_id})
@@ -979,6 +1006,9 @@ class WebastoConnect:
         }
         await self._call(Request.POST_SETTING, json.dumps(payload))
         await self._update_device_data(device.device_id, switch_device=False)
+        await self._update_webapi_device_settings(
+            device.device_id, switch_device=False
+        )
 
     async def set_temperature_compensation(
         self, device: WebastoDevice, value: float
@@ -995,3 +1025,6 @@ class WebastoConnect:
         }
         await self._call(Request.POST_SETTING, json.dumps(payload, indent=4))
         await self._update_device_data(device.device_id, switch_device=False)
+        await self._update_webapi_device_settings(
+            device.device_id, switch_device=False
+        )

@@ -181,6 +181,12 @@ Current app-backend `update()` flow:
 2. Parse every object in `devices`.
 3. Do not call webapi `CHANGE_DEVICE` for normal status refresh.
 
+When email/password credentials provide a webapi session, `connect()` also
+selects each associated device and calls `GET_SETTINGS` once. This populates
+settings that are absent from the app backend, including `low_voltage_cutoff`
+and `ext_temp_comp`. A write to either setting refreshes `GET_SETTINGS` for the
+selected device so the in-memory value reflects the server response.
+
 Webapi `CHANGE_DEVICE` is only needed before webapi settings writes and reads
 that depend on the webapi active-device context. It is also used during
 email/password association bootstrap to read `check_id` for each webapi device,
