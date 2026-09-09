@@ -193,6 +193,7 @@ class TestAppBackendCalls(IsolatedAsyncioTestCase):
             "POST",
             "/remuc/mobile-api/client/client/heatermode",
             payload='{"dev_id":"123","mode":1}',
+            extra_headers={"Content-Type": "application/json"},
         )
 
     async def test_save_timers_uses_timers2_output_id(self) -> None:
@@ -484,9 +485,7 @@ class TestAppDeviceParsing(IsolatedAsyncioTestCase):
                 },
             ),
         )
-        cloud._update_device_data.assert_awaited_once_with(
-            "123", switch_device=False
-        )
+        cloud._update_device_data.assert_awaited_once_with("123", switch_device=False)
         self.assertEqual(cloud._call.await_args_list[-1], call(Request.GET_SETTINGS))
 
     async def test_temperature_compensation_uses_compact_json(self) -> None:

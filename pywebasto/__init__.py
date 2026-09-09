@@ -877,6 +877,7 @@ class WebastoConnect:
             "POST",
             f"/remuc/mobile-api/client/{self._client_id}/heatermode",
             payload=json.dumps(payload, separators=(",", ":")),
+            extra_headers={"Content-Type": "application/json"},
         )
         await self.update(device_id=device.device_id, force=True)
 
@@ -1035,9 +1036,7 @@ class WebastoConnect:
         await self._change_device(device_id=device.device_id)
 
         payload = {
-            "device_settings": {
-                "low_voltage_cutoff": _webclient_json_number(value)
-            },
+            "device_settings": {"low_voltage_cutoff": _webclient_json_number(value)},
             "service_settings": {},
             "location_events": None,
             "air_heater": {},
@@ -1048,9 +1047,7 @@ class WebastoConnect:
             extra_headers=WEBAPI_AJAX_HEADERS,
         )
         await self._update_device_data(device.device_id, switch_device=False)
-        await self._update_webapi_device_settings(
-            device.device_id, switch_device=False
-        )
+        await self._update_webapi_device_settings(device.device_id, switch_device=False)
 
     async def set_temperature_compensation(
         self, device: WebastoDevice, value: float
@@ -1071,6 +1068,4 @@ class WebastoConnect:
             extra_headers=WEBAPI_AJAX_HEADERS,
         )
         await self._update_device_data(device.device_id, switch_device=False)
-        await self._update_webapi_device_settings(
-            device.device_id, switch_device=False
-        )
+        await self._update_webapi_device_settings(device.device_id, switch_device=False)
