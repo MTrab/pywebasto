@@ -1043,7 +1043,7 @@ class WebastoConnect:
         }
         await self._call(
             Request.POST_SETTING,
-            json.dumps(payload, indent=4),
+            json.dumps(payload),
             extra_headers=WEBAPI_AJAX_HEADERS,
         )
         await self._update_device_data(device.device_id, switch_device=False)
