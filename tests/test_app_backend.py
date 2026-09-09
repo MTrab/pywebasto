@@ -462,6 +462,28 @@ class TestAppDeviceParsing(IsolatedAsyncioTestCase):
         await cloud.set_low_voltage_cutoff(device, 11.7)
 
         self.assertEqual(device.low_voltage_cutoff, 11.7)
+        self.assertEqual(
+            cloud._call.await_args_list[1],
+            call(
+                Request.POST_SETTING,
+                json.dumps(
+                    {
+                        "device_settings": {"low_voltage_cutoff": 11.7},
+                        "service_settings": {},
+                        "location_events": None,
+                        "air_heater": {},
+                    }
+                ),
+                extra_headers={
+                    "Content-Type": (
+                        "application/x-www-form-urlencoded; charset=UTF-8"
+                    ),
+                    "Origin": "https://my.webastoconnect.com",
+                    "Referer": "https://my.webastoconnect.com/index.html?lang=en",
+                    "X-Requested-With": "XMLHttpRequest",
+                },
+            ),
+        )
         cloud._update_device_data.assert_awaited_once_with(
             "123", switch_device=False
         )

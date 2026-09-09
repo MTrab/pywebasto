@@ -57,6 +57,12 @@ RETRYABLE_REQUESTS = {
     Request.GET_SETTINGS,
     Request.CHANGE_DEVICE,
 }
+WEBAPI_AJAX_HEADERS = {
+    "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+    "Origin": "https://my.webastoconnect.com",
+    "Referer": "https://my.webastoconnect.com/index.html?lang=en",
+    "X-Requested-With": "XMLHttpRequest",
+}
 
 
 @dataclass(slots=True)
@@ -945,7 +951,11 @@ class WebastoConnect:
             "location_events": None,
             "air_heater": {},
         }
-        await self._call(Request.POST_SETTING, json.dumps(payload))
+        await self._call(
+            Request.POST_SETTING,
+            json.dumps(payload),
+            extra_headers=WEBAPI_AJAX_HEADERS,
+        )
         await self.update(device_id=device.device_id, force=True)
 
     async def set_aux_timeout(
@@ -990,7 +1000,11 @@ class WebastoConnect:
             "air_heater": {},
         }
 
-        await self._call(Request.POST_SETTING, json.dumps(data))
+        await self._call(
+            Request.POST_SETTING,
+            json.dumps(data),
+            extra_headers=WEBAPI_AJAX_HEADERS,
+        )
         await self._update_device_data(device.device_id, switch_device=False)
 
     async def set_low_voltage_cutoff(self, device: WebastoDevice, value: float) -> None:
@@ -1004,7 +1018,11 @@ class WebastoConnect:
             "location_events": None,
             "air_heater": {},
         }
-        await self._call(Request.POST_SETTING, json.dumps(payload))
+        await self._call(
+            Request.POST_SETTING,
+            json.dumps(payload),
+            extra_headers=WEBAPI_AJAX_HEADERS,
+        )
         await self._update_device_data(device.device_id, switch_device=False)
         await self._update_webapi_device_settings(
             device.device_id, switch_device=False
@@ -1023,7 +1041,11 @@ class WebastoConnect:
             "location_events": None,
             "air_heater": {},
         }
-        await self._call(Request.POST_SETTING, json.dumps(payload, indent=4))
+        await self._call(
+            Request.POST_SETTING,
+            json.dumps(payload, indent=4),
+            extra_headers=WEBAPI_AJAX_HEADERS,
+        )
         await self._update_device_data(device.device_id, switch_device=False)
         await self._update_webapi_device_settings(
             device.device_id, switch_device=False

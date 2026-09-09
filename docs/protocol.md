@@ -40,6 +40,15 @@ Cookie behavior in client:
    - prefers `hssess-webclient` when available
    - otherwise uses `hssess`
 
+Webapi settings writes mirror the same-origin AJAX request made by webclient
+3.4 (`js/webclient.js`, inspected 2026-09-09). Sanitized browser captures in
+`docs/dumps/` confirm these write headers:
+
+- `Content-Type: application/x-www-form-urlencoded; charset=UTF-8`
+- `Origin: https://my.webastoconnect.com`
+- `Referer: https://my.webastoconnect.com/index.html?lang=en`
+- `X-Requested-With: XMLHttpRequest`
+
 ## Endpoint Map
 
 All paths are relative to `/webapi`.
