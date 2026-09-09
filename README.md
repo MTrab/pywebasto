@@ -216,9 +216,9 @@ from pywebasto import SimpleTimer
 timers = await webasto.get_timers(device)
 
 new_timer = SimpleTimer(
-    start=830,      # minutes after midnight UTC
+    start=830,  # minutes after midnight UTC
     duration=5400,  # seconds
-    repeat=31,      # Monday-Friday
+    repeat=31,  # Monday-Friday
     enabled=True,
 )
 

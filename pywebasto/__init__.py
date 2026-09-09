@@ -1,19 +1,18 @@
 """Module for interfacing with Webasto Connect."""
 
 import asyncio
+import json
+import logging
+import sys
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from inspect import isawaitable
-import json
-import logging
 from pathlib import Path
-import sys
 from time import monotonic
+from typing import Self
 from uuid import uuid4
 
 import aiohttp
-
-from .device import WebastoDevice
 
 from .consts import (
     API_URL,
@@ -30,6 +29,7 @@ from .consts import (
     CMD_VENTILATION_ON,
     USER_AGENT,
 )
+from .device import WebastoDevice
 from .enums import Outputs, Request
 from .exceptions import (
     ForbiddenException,
@@ -43,7 +43,7 @@ from .timer import SimpleTimer
 if sys.version_info < (3, 11, 0):
     sys.exit("The pywebasto module requires Python 3.11.0 or later")
 
-__all__ = ["AppCredentials", "WebastoConnect", "SimpleTimer"]
+__all__ = ["AppCredentials", "SimpleTimer", "WebastoConnect"]
 
 LOGGER = logging.getLogger(__name__)
 REQUEST_TIMEOUT = aiohttp.ClientTimeout(total=60, connect=10, sock_read=45)
@@ -160,12 +160,10 @@ class WebastoConnect:
         """Generate headers."""
         _headers: dict = {"User-Agent": USER_AGENT}
 
-        if isinstance(self._hssess, type(None)) and isinstance(
-            self._hssess_webclient, type(None)
-        ):
+        if (self._hssess is None) and (self._hssess_webclient is None):
             pass
         else:
-            if isinstance(self._hssess_webclient, type(None)):
+            if self._hssess_webclient is None:
                 _headers.update({"Cookie": f"hssess={self._hssess};"})
             else:
                 _headers.update(
@@ -333,7 +331,7 @@ class WebastoConnect:
         if self._session is not None and not self._session.closed:
             await self._session.close()
 
-    async def __aenter__(self) -> "WebastoConnect":
+    async def __aenter__(self) -> Self:
         """Allow async context manager usage."""
         return self
 
@@ -349,7 +347,7 @@ class WebastoConnect:
     ) -> dict | None:
         """Make an API request."""
 
-        if isinstance(payload, type(None)):
+        if payload is None:
             payload = {}
 
         headers = self.assemble_headers()
@@ -523,7 +521,7 @@ class WebastoConnect:
     async def update(self, device_id: str | None = None, force: bool = False) -> None:
         """Get current data from Webasto API."""
         async with self._update_lock:
-            if isinstance(device_id, type(None)):
+            if device_id is None:
                 if not force and self._is_update_fresh(self._last_full_update):
                     LOGGER.debug("Skipping update because cached account data is fresh")
                     return
@@ -610,7 +608,7 @@ class WebastoConnect:
     def _list_devices(self) -> list[dict]:
         """List all devices associated with the account."""
         device_list = []
-        if isinstance(self._data, type(None)):
+        if self._data is None:
             return device_list
 
         account_info = self._data.get("account_info", {})
@@ -942,10 +940,10 @@ class WebastoConnect:
     ) -> None:
         """Sets timeout of main output port in seconds."""
         await self._ensure_webapi_session()
-        if not isinstance(heater, type(None)):
+        if heater is not None:
             device.timeout_heat = heater
 
-        if not isinstance(ventilation, type(None)):
+        if ventilation is not None:
             device.timeout_vent = ventilation
 
         await self._change_device(device_id=device.device_id)

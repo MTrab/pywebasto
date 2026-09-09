@@ -31,7 +31,7 @@ async def main():
         print(f"Client ID: {webasto.client_id}")
         print(f"Client secret: {webasto.client_secret}")
 
-        for _, device in webasto.devices.items():
+        for device in webasto.devices.values():
             print(f"Found device: {device.name} (ID: {device.device_id})")
             if device.pending_approval:
                 print("Device is waiting for approval in the ThermoConnect app")
