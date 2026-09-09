@@ -49,6 +49,11 @@ Webapi settings writes mirror the same-origin AJAX request made by webclient
 - `Referer: https://my.webastoconnect.com/index.html?lang=en`
 - `X-Requested-With: XMLHttpRequest`
 
+Numeric settings mirror the webclient's `parseFloat` plus `JSON.stringify`
+serialization. Integer-valued floats are therefore sent without a decimal
+suffix (for example, `-2.0` is encoded as `-2`), while fractional values keep
+their decimal component.
+
 ## Endpoint Map
 
 All paths are relative to `/webapi`.

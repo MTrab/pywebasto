@@ -499,7 +499,7 @@ class TestAppDeviceParsing(IsolatedAsyncioTestCase):
         cloud._update_device_data = AsyncMock()  # type: ignore[method-assign]
         cloud._update_webapi_device_settings = AsyncMock()  # type: ignore[method-assign]
 
-        await cloud.set_temperature_compensation(device, -3.0)
+        await cloud.set_temperature_compensation(device, -2.0)
 
         self.assertEqual(
             cloud._call.await_args_list[1],
@@ -507,7 +507,7 @@ class TestAppDeviceParsing(IsolatedAsyncioTestCase):
                 Request.POST_SETTING,
                 json.dumps(
                     {
-                        "device_settings": {"ext_temp_comp": -3.0},
+                        "device_settings": {"ext_temp_comp": -2},
                         "service_settings": {},
                         "location_events": None,
                         "air_heater": {},

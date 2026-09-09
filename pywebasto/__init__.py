@@ -65,6 +65,12 @@ WEBAPI_AJAX_HEADERS = {
 }
 
 
+def _webclient_json_number(value: float) -> int | float:
+    """Match JavaScript JSON.stringify formatting for numeric form values."""
+    numeric_value = float(value)
+    return int(numeric_value) if numeric_value.is_integer() else numeric_value
+
+
 @dataclass(slots=True)
 class AppCredentials:
     """Client credentials used by the Android app backend."""
@@ -1013,7 +1019,9 @@ class WebastoConnect:
         await self._change_device(device_id=device.device_id)
 
         payload = {
-            "device_settings": {"low_voltage_cutoff": value},
+            "device_settings": {
+                "low_voltage_cutoff": _webclient_json_number(value)
+            },
             "service_settings": {},
             "location_events": None,
             "air_heater": {},
@@ -1036,7 +1044,7 @@ class WebastoConnect:
         await self._change_device(device_id=device.device_id)
 
         payload = {
-            "device_settings": {"ext_temp_comp": value},
+            "device_settings": {"ext_temp_comp": _webclient_json_number(value)},
             "service_settings": {},
             "location_events": None,
             "air_heater": {},
