@@ -856,6 +856,22 @@ class WebastoConnect:
     async def ventilation_mode(self, device: WebastoDevice, state: bool) -> None:
         """Turn ventilation mode on or off."""
         self._raise_if_pending(device)
+        app_data = device.app_data or {}
+        active_output = next(
+            (
+                output
+                for output in app_data.get("outputs", [])
+                if output.get("line") in ("OUTH", "OUTV")
+            ),
+            {},
+        )
+        LOGGER.debug(
+            "Changing heater mode to %s (association status: %s, "
+            "ventilation available: %s)",
+            "ventilation" if state else "heating",
+            app_data.get("assocStatus"),
+            active_output.get("ventilation_mode_available"),
+        )
         payload = {"dev_id": device.device_id, "mode": 1 if state else 0}
         await self._app_call(
             "POST",
